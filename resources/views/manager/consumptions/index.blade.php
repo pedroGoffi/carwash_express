@@ -113,13 +113,18 @@
                         <td class="px-6 py-3 text-right text-sm font-semibold text-red-600">- R$ {{ number_format($consumption->amount, 2, ',', '.') }}</td>
                         <td class="px-6 py-3 text-sm text-gray-500">{{ $consumption->reason ?? '-' }}</td>
                         <td class="px-6 py-3 text-center">
-                            <form action="{{ route('manager.consumptions.destroy', $consumption) }}" method="POST" class="inline" onsubmit="return confirm('Remover este consumo?')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="text-red-500 hover:text-red-700">
-                                    <i class="fas fa-trash-alt"></i>
-                                </button>
-                            </form>
+                            @if (auth()->user()->isManager())
+                                <form action="{{ route('manager.consumptions.destroy', $consumption) }}" method="POST" class="inline" onsubmit="return confirm('Remover este consumo?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-red-500 hover:text-red-700">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </form>                            
+                            @else
+                                <h1>-</h1>
+                            @endif
+
                         </td>
                     </tr>
                     @empty

@@ -108,18 +108,6 @@
                                 </div>
                                 <i class="fas fa-chevron-right text-xs opacity-50"></i>
                             </a>
-                            <a href="{{ route('operator.services.to-deliver') }}" 
-                                class="menu-item flex items-center gap-3 px-4 py-3 rounded-xl transition-all
-                                {{ request()->routeIs('operator.services.to-deliver') ? 'menu-active' : 'bg-gray-50 text-gray-700 hover:bg-blue-50' }}"
-                            >
-                                <div class="w-8 h-8 rounded-lg flex items-center justify-center {{ request()->routeIs('operator.services.to-deliver') ? 'bg-white/20' : 'bg-purple-100' }}">
-                                    <i class="fas fa-key {{ request()->routeIs('operator.services.to-deliver') ? 'text-white' : 'text-purple-600' }} text-lg"></i>
-                                </div>
-                                <div class="flex-1">
-                                    <p class="font-semibold">Entregar Veículo</p>
-                                    <p class="text-xs opacity-70">Devolver chaves</p>
-                                </div>
-                            </a>
                                     
                             <a href="{{ route('operator.notes.index') }}" 
                             class="menu-item flex items-center gap-3 px-4 py-3 rounded-xl transition-all
@@ -199,15 +187,15 @@
                     </div>
                 </div>
                 @endif
-
-                @if(auth()->user()->isManager())
-                    {{-- Financeiro --}}
-                    <div>
-                        <div class="flex items-center gap-2 mb-3 px-2">
-                            <div class="w-1 h-5 bg-green-500 rounded-full"></div>
-                            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Financeiro</p>
-                        </div>
-                        <div class="space-y-2">
+                                
+                {{-- Financeiro --}}
+                <div>
+                    <div class="flex items-center gap-2 mb-3 px-2">
+                        <div class="w-1 h-5 bg-green-500 rounded-full"></div>
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Financeiro</p>
+                    </div>
+                    <div class="space-y-2">
+                        @if (auth()->user()->isManager())
                             <a href="{{ route('manager.advances.index') }}" 
                             class="menu-item flex items-center gap-3 px-4 py-3 rounded-xl transition-all
                             {{ request()->routeIs('manager.advances.*') ? 'menu-active' : 'bg-gray-50 text-gray-700 hover:bg-green-50' }}">
@@ -220,18 +208,6 @@
                                 </div>
                             </a>
 
-                            <a href="{{ route('manager.consumptions.index') }}" 
-                                class="menu-item flex items-center gap-3 px-4 py-3 rounded-xl transition-all
-                                {{ request()->routeIs('manager.consumptions.*') ? 'menu-active' : 'bg-gray-50 text-gray-700 hover:bg-orange-50' }}">
-                                    <div class="w-8 h-8 rounded-lg flex items-center justify-center {{ request()->routeIs('manager.consumptions.*') ? 'bg-white/20' : 'bg-orange-100' }}">
-                                        <i class="fas fa-coffee {{ request()->routeIs('manager.consumptions.*') ? 'text-white' : 'text-orange-600' }} text-lg"></i>
-                                    </div>
-                                    <div class="flex-1">
-                                        <p class="font-semibold">Consumo</p>
-                                        <p class="text-xs opacity-70">Refrigerantes, lanches</p>
-                                    </div>
-                                </a>
-
                             <a href="{{ route('manager.payroll.index') }}" 
                             class="menu-item flex items-center gap-3 px-4 py-3 rounded-xl transition-all
                             {{ request()->routeIs('manager.payroll.*') ? 'menu-active' : 'bg-gray-50 text-gray-700 hover:bg-green-50' }}">
@@ -242,10 +218,22 @@
                                     <p class="font-semibold">Folha de Pagamento</p>
                                     <p class="text-xs opacity-70">Salários e descontos</p>
                                 </div>
-                            </a>
-                        </div>
+                            </a>                        
+                        @endif
+
+                        <a href="{{ route('manager.consumptions.index') }}" 
+                            class="menu-item flex items-center gap-3 px-4 py-3 rounded-xl transition-all
+                            {{ request()->routeIs('manager.consumptions.*') ? 'menu-active' : 'bg-gray-50 text-gray-700 hover:bg-orange-50' }}">
+                                <div class="w-8 h-8 rounded-lg flex items-center justify-center {{ request()->routeIs('manager.consumptions.*') ? 'bg-white/20' : 'bg-orange-100' }}">
+                                    <i class="fas fa-coffee {{ request()->routeIs('manager.consumptions.*') ? 'text-white' : 'text-orange-600' }} text-lg"></i>
+                                </div>
+                                <div class="flex-1">
+                                    <p class="font-semibold">Consumo</p>
+                                    <p class="text-xs opacity-70">Refrigerantes, lanches</p>
+                                </div>
+                            </a>                        
                     </div>
-                @endif
+                </div>                
 
                 {{-- COLUNA 3: ADMIN (apenas admin) --}}
                 @if(auth()->user()->isAdmin())

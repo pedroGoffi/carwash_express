@@ -133,7 +133,7 @@ class ServiceOrderController extends Controller
             'contact_name' => $contactName,
             'license_plate' => strtoupper($request->license_plate),
             'code' => ServiceOrder::generateCode(),
-            'status' => ServiceOrderStatus::QUEUED,
+            'status' => ServiceOrderStatus::FINISHED, // não tem fila. feature removed
             'vehicle_type' => $vehicleType,
             'total' => 0,
         ]);
@@ -157,7 +157,7 @@ class ServiceOrderController extends Controller
         if ($request->payments) {
             $payments = json_decode($request->payments, true);
             foreach ($payments as $payment) {
-                \App\Models\Payment::create([
+                Payment::create([
                     'service_order_id' => $order->id,
                     'method' => strtolower($payment['method']),
                     'amount' => $payment['amount'],
