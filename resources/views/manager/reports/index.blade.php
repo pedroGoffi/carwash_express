@@ -20,11 +20,11 @@
                 </div>
             </div>
             <div class="flex flex-wrap gap-2">
-                <button onclick="setPeriod('today')" class="period-btn px-4 py-2 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-600 transition">Hoje</button>
-                <button onclick="setPeriod('yesterday')" class="period-btn px-4 py-2 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-600 transition">Ontem</button>
-                <button onclick="setPeriod('week')" class="period-btn px-4 py-2 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-600 transition">Esta semana</button>
-                <button onclick="setPeriod('month')" class="period-btn px-4 py-2 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-600 transition">Este mês</button>
-                <button onclick="setPeriod('last6months')" class="period-btn px-4 py-2 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-600 transition">Últimos 6 meses</button>
+                <button onclick="setPeriod('today', this)" class="period-btn px-4 py-2 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-600 transition">Hoje</button>
+                <button onclick="setPeriod('yesterday', this)" class="period-btn px-4 py-2 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-600 transition">Ontem</button>
+                <button onclick="setPeriod('week', this)" class="period-btn px-4 py-2 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-600 transition">Esta semana</button>
+                <button onclick="setPeriod('month', this)" class="period-btn px-4 py-2 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-600 transition">Este mês</button>
+                <button onclick="setPeriod('last6months', this)" class="period-btn px-4 py-2 text-sm rounded-lg bg-gray-100 text-gray-600 hover:bg-blue-100 hover:text-blue-600 transition">Últimos 6 meses</button>
                 <button onclick="openCustomDateModal()" class="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">
                     <i class="fas fa-calendar-plus mr-1"></i> Personalizado
                 </button>
@@ -43,59 +43,59 @@
 
     {{-- Cards de Métricas --}}
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg p-5 text-white">
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 text-slate-900">
             <div class="flex items-center justify-between mb-3">
-                <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-clipboard-list text-white text-xl"></i>
+                <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-clipboard-list text-blue-600 text-xl"></i>
                 </div>
-                <i class="fas fa-chart-line text-white/50 text-2xl"></i>
+                <i class="fas fa-chart-line text-blue-400 text-2xl"></i>
             </div>
-            <p class="text-white/80 text-sm">Total de Ordens</p>
+            <p class="text-slate-500 text-sm">Total de Ordens</p>
             <p class="text-3xl font-bold mt-1" id="totalOrders">0</p>
-            <div class="mt-3 pt-2 border-t border-white/20">
-                <span class="text-xs text-white/70">No período selecionado</span>
+            <div class="mt-3 pt-2 border-t border-slate-100">
+                <span class="text-xs text-slate-400">No período selecionado</span>
             </div>
         </div>
 
-        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-lg p-5 text-white">
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 text-slate-900">
             <div class="flex items-center justify-between mb-3">
-                <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-dollar-sign text-white text-xl"></i>
+                <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-dollar-sign text-blue-600 text-xl"></i>
                 </div>
-                <i class="fas fa-chart-line text-white/50 text-2xl"></i>
+                <i class="fas fa-chart-line text-blue-400 text-2xl"></i>
             </div>
-            <p class="text-white/80 text-sm">Faturamento Total</p>
+            <p class="text-slate-500 text-sm">Faturamento Total</p>
             <p class="text-3xl font-bold mt-1" id="totalRevenue">R$ 0,00</p>
-            <div class="mt-3 pt-2 border-t border-white/20">
-                <span class="text-xs text-white/70">No período selecionado</span>
+            <div class="mt-3 pt-2 border-t border-slate-100">
+                <span class="text-xs text-slate-400">No período selecionado</span>
             </div>
         </div>
 
-        <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg p-5 text-white">
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 text-slate-900">
             <div class="flex items-center justify-between mb-3">
-                <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-car text-white text-xl"></i>
+                <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-car text-blue-600 text-xl"></i>
                 </div>
-                <i class="fas fa-chart-line text-white/50 text-2xl"></i>
+                <i class="fas fa-chart-line text-blue-400 text-2xl"></i>
             </div>
-            <p class="text-white/80 text-sm">Ticket Médio</p>
+            <p class="text-slate-500 text-sm">Ticket Médio</p>
             <p class="text-3xl font-bold mt-1" id="averageTicket">R$ 0,00</p>
-            <div class="mt-3 pt-2 border-t border-white/20">
-                <span class="text-xs text-white/70">Por ordem</span>
+            <div class="mt-3 pt-2 border-t border-slate-100">
+                <span class="text-xs text-slate-400">Por ordem</span>
             </div>
         </div>
 
-        <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl shadow-lg p-5 text-white">
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 text-slate-900">
             <div class="flex items-center justify-between mb-3">
-                <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-users text-white text-xl"></i>
+                <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-users text-blue-600 text-xl"></i>
                 </div>
-                <i class="fas fa-chart-line text-white/50 text-2xl"></i>
+                <i class="fas fa-chart-line text-blue-400 text-2xl"></i>
             </div>
-            <p class="text-white/80 text-sm">Clientes Atendidos</p>
+            <p class="text-slate-500 text-sm">Clientes Atendidos</p>
             <p class="text-3xl font-bold mt-1" id="totalCustomers">0</p>
-            <div class="mt-3 pt-2 border-t border-white/20">
-                <span class="text-xs text-white/70">No período</span>
+            <div class="mt-3 pt-2 border-t border-slate-100">
+                <span class="text-xs text-slate-400">No período</span>
             </div>
         </div>
     </div>
@@ -215,131 +215,80 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    let revenueChart, ordersChart, paymentChart;
-
-    function setPeriod(period) {
-        document.querySelectorAll('.period-btn').forEach(btn => {
-            btn.classList.remove('bg-blue-100', 'text-blue-600');
-            btn.classList.add('bg-gray-100', 'text-gray-600');
+let revenueChart, ordersChart, paymentChart, controller;
+const money = n => Number(n || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const escapeText = str => String(str ?? '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+let chartsReady;
+function ensureCharts() {
+    if (window.Chart) return Promise.resolve(true);
+    if (!chartsReady) chartsReady = new Promise(resolve => {
+        const script = document.createElement('script');
+        script.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js';
+        script.async=true;
+        script.onload=() => resolve(!!window.Chart);
+        script.onerror=() => resolve(false);
+        document.head.appendChild(script);
+    });
+    return chartsReady;
+}
+async function fetchReport(params) {
+    if (controller) controller.abort();
+    controller = new AbortController();
+    try {
+        const response = await fetch(@json(route('manager.reports.data')) + '?' + params.toString(), {
+            headers:{'Accept':'application/json'},signal: controller.signal
         });
-        event.target.classList.remove('bg-gray-100', 'text-gray-600');
-        event.target.classList.add('bg-blue-100', 'text-blue-600');
-        
-        fetch(`/manager/reports/data?period=${period}`)
-            .then(response => response.json())
-            .then(data => updateDashboard(data));
+        if (!response.ok) throw new Error('Falha ao consultar relatórios');
+        const data = await response.json();
+        updateDashboard(data);
+        // A biblioteca de gráficos carrega só depois que os indicadores aparecem.
+        if (await ensureCharts()) drawCharts(data);
+    } catch (e) {
+        if (e.name === 'AbortError') return;
+        document.getElementById('topProductsList').textContent='Não foi possível carregar o relatório. Selecione outro período para tentar novamente.';
+        document.getElementById('detailedTable').innerHTML='<tr><td colspan="4" class="px-6 py-8 text-slate-500">Relatório indisponível.</td></tr>';
     }
-
-    function openCustomDateModal() {
-        document.getElementById('customDateModal').classList.remove('hidden');
-    }
-
-    function closeCustomDateModal() {
-        document.getElementById('customDateModal').classList.add('hidden');
-    }
-
-    function applyCustomDate() {
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-        
-        if (!startDate || !endDate) {
-            alert('Selecione as datas inicial e final');
-            return;
-        }
-        
-        closeCustomDateModal();
-        
-        fetch(`/manager/reports/data?start=${startDate}&end=${endDate}`)
-            .then(response => response.json())
-            .then(data => updateDashboard(data));
-        
-        document.getElementById('period-label').innerText = `${startDate} até ${endDate}`;
-    }
-
-    function updateDashboard(data) {
-        // Atualizar cards
-        document.getElementById('totalOrders').innerText = data.totalOrders.toLocaleString();
-        document.getElementById('totalRevenue').innerText = 'R$ ' + data.totalRevenue.toFixed(2).replace('.', ',');
-        document.getElementById('averageTicket').innerText = 'R$ ' + data.averageTicket.toFixed(2).replace('.', ',');
-        document.getElementById('totalCustomers').innerText = data.totalCustomers.toLocaleString();
-
-        // Gráfico de Faturamento
-        if (revenueChart) revenueChart.destroy();
-        revenueChart = new Chart(document.getElementById('revenueChart'), {
-            type: 'line',
-            data: {
-                labels: data.revenueLabels,
-                datasets: [{
-                    label: 'Faturamento (R$)',
-                    data: data.revenueData,
-                    borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    tension: 0.3,
-                    fill: true
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: true }
-        });
-
-        // Gráfico de Ordens
-        if (ordersChart) ordersChart.destroy();
-        ordersChart = new Chart(document.getElementById('ordersChart'), {
-            type: 'bar',
-            data: {
-                labels: data.ordersLabels,
-                datasets: [{
-                    label: 'Ordens',
-                    data: data.ordersData,
-                    backgroundColor: '#10b981',
-                    borderRadius: 8
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: true }
-        });
-
-        // Gráfico de Pagamentos
-        if (paymentChart) paymentChart.destroy();
-        paymentChart = new Chart(document.getElementById('paymentChart'), {
-            type: 'doughnut',
-            data: {
-                labels: data.paymentLabels,
-                datasets: [{
-                    data: data.paymentData,
-                    backgroundColor: ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b']
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: true }
-        });
-
-        // Top Produtos
-        const topProductsHtml = data.topProducts.map((p, i) => `
-            <div>
-                <div class="flex justify-between text-sm mb-1">
-                    <span class="font-medium">${i+1}. ${p.name}</span>
-                    <span class="text-gray-500">${p.total} vendas</span>
-                </div>
-                <div class="w-full bg-gray-200 rounded-full h-2">
-                    <div class="bg-blue-600 h-2 rounded-full" style="width: ${p.percent}%"></div>
-                </div>
-            </div>
-        `).join('');
-        document.getElementById('topProductsList').innerHTML = topProductsHtml || '<div class="text-center py-8 text-gray-400">Nenhum dado disponível</div>';
-
-        // Tabela detalhada
-        const tableHtml = data.dailyData.map(day => `
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-3 text-sm">${day.date}</td>
-                <td class="px-6 py-3 text-right text-sm font-semibold">${day.orders}</td>
-                <td class="px-6 py-3 text-right text-sm font-semibold text-green-600">R$ ${day.revenue}</td>
-                <td class="px-6 py-3 text-right text-sm">R$ ${day.avgTicket}</td>
-            </tr>
-        `).join('');
-        document.getElementById('detailedTable').innerHTML = tableHtml || '<tr><td colspan="4" class="px-6 py-8 text-center text-gray-400">Nenhum dado disponível</td></tr>';
-    }
-
-    // Carregar dados iniciais
-    setPeriod('month');
+}
+function setPeriod(period, button=null) {
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.classList.toggle('bg-blue-100', btn === button);
+        btn.classList.toggle('text-blue-600', btn === button);
+        btn.classList.toggle('bg-gray-100', btn !== button);
+        btn.classList.toggle('text-gray-600', btn !== button);
+    });
+    const labels={today:'Hoje',yesterday:'Ontem',week:'Esta semana',month:'Este mês',last6months:'Últimos 6 meses'};
+    document.getElementById('period-label').textContent=labels[period] ?? 'Período';
+    fetchReport(new URLSearchParams({period}));
+}
+function openCustomDateModal() { document.getElementById('customDateModal').classList.remove('hidden'); }
+function closeCustomDateModal() { document.getElementById('customDateModal').classList.add('hidden'); }
+function applyCustomDate() {
+    const start=document.getElementById('startDate').value;
+    const end=document.getElementById('endDate').value;
+    if (!start || !end || start>end) { alert('Selecione um período válido.'); return; }
+    closeCustomDateModal();
+    document.getElementById('period-label').textContent=`${start} até ${end}`;
+    fetchReport(new URLSearchParams({start,end}));
+}
+function updateDashboard(data) {
+    document.getElementById('totalOrders').textContent=Number(data.totalOrders || 0).toLocaleString('pt-BR');
+    document.getElementById('totalRevenue').textContent=money(data.totalRevenue);
+    document.getElementById('averageTicket').textContent=money(data.averageTicket);
+    document.getElementById('totalCustomers').textContent=Number(data.totalCustomers || 0).toLocaleString('pt-BR');
+    const products=(data.topProducts || []).map((x,i)=>`<div class="mb-3"><div class="flex justify-between text-sm"><span>${i+1}. ${escapeText(x.name)}</span><span class="text-slate-500">${Number(x.total)||0} vendas</span></div><div class="h-2 rounded-full bg-slate-100 mt-2"><div class="h-2 rounded-full bg-blue-500" style="width:${Math.min(100,Math.max(0, Number(x.percent)||0))}%"></div></div></div>`).join('');
+    document.getElementById('topProductsList').innerHTML=products || '<p class="text-slate-500">Sem produtos no período.</p>';
+    const rows=(data.dailyData || []).map(x=>`<tr><td class="px-6 py-3">${escapeText(x.date)}</td><td class="px-6 py-3 text-right">${Number(x.orders)||0}</td><td class="px-6 py-3 text-right">R$ ${escapeText(x.revenue)}</td><td class="px-6 py-3 text-right">R$ ${escapeText(x.avgTicket)}</td></tr>`).join('');
+    document.getElementById('detailedTable').innerHTML=rows || '<tr><td colspan="4" class="px-6 py-8 text-center text-slate-500">Sem dados no período.</td></tr>';
+}
+function drawCharts(data) {
+    [revenueChart,ordersChart,paymentChart].forEach(c=>c?.destroy());
+    revenueChart=new Chart(document.getElementById('revenueChart'),{type:'line',data:{labels:data.revenueLabels||[],datasets:[{label:'Receita',data:data.revenueData||[],borderColor:'#2563eb',tension:.3,fill:false}]},options:{responsive:true,maintainAspectRatio:true}});
+    ordersChart=new Chart(document.getElementById('ordersChart'),{type:'bar',data:{labels:data.ordersLabels||[],datasets:[{label:'Pagamentos registrados',data:data.ordersData||[],backgroundColor:'#2563eb',borderRadius:5}]},options:{responsive:true,maintainAspectRatio:true}});
+    paymentChart=new Chart(document.getElementById('paymentChart'),{type:'doughnut',data:{labels:data.paymentLabels||[],datasets:[{data:data.paymentData||[],backgroundColor:['#2563eb','#60a5fa','#93c5fd','#bfdbfe']}]},options:{responsive:true,maintainAspectRatio:true}});
+}
+// Primeiro pinta a página, depois busca dados em paralelo à navegação.
+if ('requestIdleCallback' in window) requestIdleCallback(()=>setPeriod('month'),{timeout:1200});
+else setTimeout(()=>setPeriod('month'),50);
 </script>
 @endsection

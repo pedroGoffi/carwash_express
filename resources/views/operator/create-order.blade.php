@@ -1,539 +1,389 @@
 @extends('layouts.app')
 
-@section('title', 'Nova Ordem')
-@section('header', 'Nova Ordem de Serviço')
-@section('subheader', 'Preencha os dados abaixo para criar uma nova ordem')
+@section('title', 'Nova ordem')
+@section('header', 'Nova ordem')
+@section('subheader', 'Venda rápida · serviços, produtos e pagamento em uma tela')
 
 @section('content')
-<div class="max-w-6xl mx-auto">
-    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-        
-        {{-- Header com gradiente --}}
-        <div class="bg-gradient-to-r from-blue-600 to-blue-800 px-6 py-4">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                    <i class="fas fa-clipboard-list text-white text-xl"></i>
-                </div>
-                <div>
-                    <h2 class="text-white text-lg font-semibold">Nova Ordem de Serviço</h2>
-                    <p class="text-blue-100 text-sm">Informe os dados do cliente e selecione os serviços</p>
-                </div>
-            </div>
+@php
+    $selectedItems = old('items', []);
+    $customerType = old('customer_type', 'pf');
+    $vehicleType = old('vehicle_type', 'normal');
+    $initialStatus = old('initial_status', 'finished');
+    $catalog = $washes->concat($products)->mapWithKeys(fn ($p) => [$p->id => [
+        'name' => $p->name,
+        'type' => $p->type->value,
+        'normal' => round($p->getPriceForVehicleType('normal') * 100),
+        'suv' => round($p->getPriceForVehicleType('suv') * 100),
+        'pickup' => round($p->getPriceForVehicleType('pickup') * 100),
+    ]]);
+@endphp
+<style>
+    /* ERP Order Composer: estilos locais para evitar dependências adicionais e flashes visuais */
+    .erp-order { --line:#e5eaf1; --muted:#64748b; --ink:#17253b; --primary:#2563eb; color:var(--ink); }
+    .erp-order * { box-sizing:border-box; }
+    .erp-order [hidden] { display:none!important; }
+    .erp-order .erp-panel { border:1px solid var(--line); border-radius:16px; background:#fff; box-shadow:0 2px 12px rgba(32,48,75,.035); }
+    .erp-order .erp-panel-head { padding:18px 20px 14px; border-bottom:1px solid #f0f3f7; display:flex; align-items:center; gap:11px; }
+    .erp-order .erp-step { display:grid; place-items:center; width:28px; height:28px; border-radius:9px; background:#eff6ff; color:#1d4ed8; font-weight:800; font-size:12px; flex-shrink:0; }
+    .erp-order .erp-section-title { font-weight:800; font-size:14px; letter-spacing:-.01em; }
+    .erp-order .erp-hint { font-size:12px; color:var(--muted); }
+    .erp-order .erp-input { width:100%; min-width:0; border:1px solid #dce4ef; background:#fff; border-radius:10px; padding:10px 12px; font-size:14px; min-height:42px; color:#0f172a; outline:none; transition:border-color .12s, box-shadow .12s; }
+    .erp-order .erp-input:focus { border-color:#3b82f6; box-shadow:0 0 0 3px #dbeafe; }
+    .erp-order .erp-label { display:block; font-size:12px; color:#475569; font-weight:700; margin-bottom:5px; }
+    .erp-order .erp-choice { cursor:pointer; user-select:none; display:flex; align-items:center; justify-content:center; gap:8px; padding:11px 12px; min-height:42px; border:1px solid #dce4ef; border-radius:10px; color:#475569; background:#fff; font-weight:700; font-size:13px; transition:background .12s,border-color .12s,color .12s; }
+    .erp-order .erp-choice:focus-visible,.erp-order .erp-product:focus-visible,.erp-order .erp-wash:focus-visible,.erp-order button:focus-visible { outline:3px solid #bfdbfe; outline-offset:2px; }
+    .erp-order .erp-choice[data-active="true"] { background:#eff6ff; border-color:#60a5fa; color:#1d4ed8; }
+    .erp-order .erp-wash { display:flex; width:100%; text-align:left; gap:12px; align-items:center; border:1px solid #e2e8f0; border-radius:12px; padding:12px 14px; background:#fff; transition:background .12s,border-color .12s; cursor:pointer; }
+    .erp-order .erp-wash[aria-pressed="true"] { background:#eff6ff; border-color:#3b82f6; box-shadow:inset 0 0 0 1px #3b82f6; }
+    .erp-order .erp-wash .wash-indicator { display:grid; place-items:center; border:1px solid #cbd5e1; border-radius:50%; height:19px; width:19px; color:transparent; flex-shrink:0; }
+    .erp-order .erp-wash[aria-pressed="true"] .wash-indicator { border-color:#2563eb; background:#2563eb; color:white; }
+    .erp-order .erp-product { border:1px solid #e2e8f0; background:#fff; border-radius:12px; padding:14px; display:flex; justify-content:space-between; align-items:center; gap:12px; transition:border-color .12s,background .12s; }
+    .erp-order .erp-product[data-selected="true"] { border-color:#93c5fd; background:#f8fbff; }
+    .erp-order .erp-qty { display:flex; align-items:center; gap:0; border:1px solid #dbe3ef; border-radius:10px; overflow:hidden; background:white; height:36px; flex-shrink:0; }
+    .erp-order .erp-qty button { width:35px; height:35px; display:grid; place-items:center; color:#2563eb; font-weight:800; font-size:17px; }
+    .erp-order .erp-qty button:hover:not(:disabled) { background:#eff6ff; }
+    .erp-order .erp-qty button:disabled { color:#cbd5e1; cursor:not-allowed; }
+    .erp-order .erp-qty output { min-width:30px; text-align:center; font-variant-numeric:tabular-nums; font-size:14px; font-weight:800; }
+    .erp-order .erp-summary-line { display:flex; justify-content:space-between; align-items:baseline; gap:12px; padding:8px 0; font-size:13px; }
+    .erp-order .erp-small-button { background:white; border:1px solid #dbe3ef; border-radius:9px; font-size:12px; font-weight:700; padding:8px 11px; color:#334155; transition:background .12s; }
+    .erp-order .erp-small-button:hover { background:#f1f5f9; }
+    .erp-order .erp-payment-row { display:grid; grid-template-columns:1fr minmax(100px,140px) 34px; gap:8px; align-items:center; }
+    .erp-order .erp-error { border:1px solid #fecaca; border-radius:12px; padding:12px 15px; background:#fef2f2; color:#991b1b; font-size:13px; }
+    .erp-order .erp-save { border-radius:11px; background:#2563eb; color:white; padding:13px 18px; font-size:14px; font-weight:800; min-height:46px; display:inline-flex; align-items:center; justify-content:center; gap:9px; transition:background .14s; }
+    .erp-order .erp-save:hover:not(:disabled) { background:#1d4ed8; }
+    .erp-order .erp-save:disabled { opacity:.55; cursor:not-allowed; }
+    .erp-order .erp-filter[aria-pressed="true"] { background:#dbeafe; color:#1d4ed8; border-color:#93c5fd; }
+    .erp-order .erp-invalid { border-color:#ef4444 !important; }
+    @media(max-width:640px) { .erp-order .erp-panel-head { padding:15px; } .erp-order .erp-product { padding:11px; } .erp-order .erp-payment-row { grid-template-columns:1fr minmax(83px,110px) 30px; } }
+    @media(prefers-reduced-motion:reduce) { .erp-order * { transition:none!important; scroll-behavior:auto!important; } }
+</style>
+
+<div class="erp-order mx-auto max-w-[1500px]" id="erp-order">
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+        <div>
+            <p class="text-xs font-bold uppercase tracking-widest text-blue-600">Operação / Ordens de serviço</p>
+            <h2 class="text-2xl font-extrabold tracking-tight text-slate-900 mt-1">Registrar atendimento</h2>
+            <p class="text-sm text-slate-500 mt-1">Preencha o essencial, escolha a lavagem e adicione produtos com um toque.</p>
         </div>
-
-        <form action="{{ route('operator.orders.store') }}" method="POST" id="orderForm">
-            @csrf
-            
-            <div class="p-6 space-y-8">
-                
-                {{-- ========== SEÇÃO 1: DADOS DO CLIENTE ========== --}}
-                <div class="bg-gray-50 rounded-xl p-5">
-                    <h3 class="text-md font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                        <i class="fas fa-user-circle text-blue-500 text-lg"></i>
-                        Dados do Cliente
-                    </h3>
-                    
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {{-- Tipo de Cliente --}}
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">Tipo de Cliente</label>
-                            <div class="flex gap-3">
-                                <button type="button" id="btn-pf" onclick="setCustomerType('pf')" 
-                                        class="flex-1 py-2.5 rounded-lg font-medium transition-all duration-200
-                                               bg-blue-600 text-white shadow-md">
-                                    <i class="fas fa-user mr-2"></i> Pessoa Física
-                                </button>
-                                <button type="button" id="btn-pj" onclick="setCustomerType('pj')" 
-                                        class="flex-1 py-2.5 rounded-lg font-medium transition-all duration-200
-                                               bg-gray-100 text-gray-600 hover:bg-gray-200">
-                                    <i class="fas fa-building mr-2"></i> Pessoa Jurídica
-                                </button>
-                            </div>
-                            <input type="hidden" name="customer_type" id="customer_type" value="pf">
-                        </div>
-                        
-                        {{-- Placa do Veículo --}}
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                <i class="fas fa-car text-blue-500 mr-1"></i> Placa do Veículo <span class="text-red-500">*</span>
-                            </label>
-                            <div class="relative">
-                                <i class="fas fa-id-card absolute left-3 top-3 text-gray-400"></i>
-                                <input type="text" name="license_plate" required
-                                       class="w-full pl-10 pr-3 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase" 
-                                       placeholder="ABC-1234">
-                            </div>
-                            <p class="text-xs text-gray-400 mt-1">Obrigatório. Ex: ABC-1234 ou ABC1D23</p>
-                        </div>
-                    </div>
-                    
-                    {{-- Campos Pessoa Física --}}
-                    <div id="pf-fields" class="mt-4">
-                        <label class="block text-sm font-semibold text-gray-700 mb-2">
-                            <i class="fas fa-user text-blue-500 mr-1"></i> Nome do Cliente
-                        </label>
-                        <div class="relative">
-                            <i class="fas fa-user absolute left-3 top-3 text-gray-400"></i>
-                            <input type="text" name="customer_name" id="customer_name"
-                                   class="w-full pl-10 pr-3 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                                   placeholder="Digite o nome do cliente">
-                        </div>
-                        <p class="text-xs text-gray-400 mt-1">Opcional</p>
-                    </div>
-                    
-                    {{-- Campos Pessoa Jurídica --}}
-                    <div id="pj-fields" class="hidden space-y-4 mt-4">
-                        <div>
-                            <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                <i class="fas fa-building text-blue-500 mr-1"></i> Razão Social
-                            </label>
-                            <input type="text" name="company_name" id="company_name"
-                                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                                   placeholder="Nome da empresa">
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                    <i class="fas fa-id-card text-blue-500 mr-1"></i> CNPJ
-                                </label>
-                                <input type="text" name="company_document" id="company_document"
-                                       class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                                       placeholder="00.000.000/0001-00">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-semibold text-gray-700 mb-2">
-                                    <i class="fas fa-user-tie text-blue-500 mr-1"></i> Nome do Contato
-                                </label>
-                                <input type="text" name="contact_name" id="contact_name"
-                                       class="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                                       placeholder="Nome do responsável">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- ========== SEÇÃO 2: TIPO DO VEÍCULO ========== --}}
-                <div class="bg-gray-50 rounded-xl p-5">
-                    <h3 class="text-md font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                        <i class="fas fa-truck-pickup text-blue-500 text-lg"></i>
-                        Tipo do Veículo
-                    </h3>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <button type="button" onclick="selectType('normal', this)" 
-                                class="type-btn group p-5 rounded-xl transition-all duration-200
-                                       bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg">
-                            <div class="flex flex-col items-center gap-2">
-                                <img src="{{ asset('images/vehicles/car.png') }}" alt="Carro" class="w-24 h-24 object-contain">
-                                <span class="font-bold text-lg">Carro</span>
-                                <span class="text-xs opacity-80">Preço base</span>
-                            </div>
-                        </button>
-                        
-                        <button type="button" onclick="selectType('suv', this)" 
-                                class="type-btn group p-5 rounded-xl transition-all duration-200
-                                       bg-white border-2 border-gray-200 text-gray-700 hover:border-green-400 hover:shadow-md">
-                            <div class="flex flex-col items-center gap-2">
-                                <img src="{{ asset('images/vehicles/suv.png') }}" alt="SUV" class="w-24 h-24 object-contain grayscale group-hover:grayscale-0 transition">
-                                <span class="font-bold text-lg">SUV / Picape</span>
-                                <span class="text-xs text-green-600">Preço diferenciado</span>
-                            </div>
-                        </button>
-                        
-                        <button type="button" onclick="selectType('pickup', this)" 
-                                class="type-btn group p-5 rounded-xl transition-all duration-200
-                                       bg-white border-2 border-gray-200 text-gray-700 hover:border-orange-400 hover:shadow-md">
-                            <div class="flex flex-col items-center gap-2">
-                                <img src="{{ asset('images/vehicles/pickup.png') }}" alt="Caminhonete" class="w-24 h-24 object-contain">
-                                <span class="font-bold text-lg">Caminhonete</span>
-                                <span class="text-xs text-orange-600">Preço + alto</span>
-                            </div>
-                        </button>
-                    </div>
-                    <input type="hidden" name="vehicle_type" id="vehicle_type" value="normal">
-                </div>
-
-                {{-- ========== SEÇÃO 3: SERVIÇOS ========== --}}
-                <div class="bg-gray-50 rounded-xl p-5">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-md font-semibold text-gray-700 flex items-center gap-2">
-                            <i class="fas fa-soap text-blue-500 text-lg"></i>
-                            Serviços
-                        </h3>
-                        <span class="text-xs text-gray-400 bg-white px-2 py-1 rounded-full">Selecione os serviços desejados</span>
-                    </div>
-                    
-                    {{-- Lavagens --}}
-                    <div class="mb-6">
-                        <label class="text-sm font-semibold text-gray-600 mb-3 block">
-                            <i class="fas fa-car-wash text-blue-500 mr-1"></i> Lavagens
-                            <span class="text-xs text-red-500 ml-1">* obrigatório</span>
-                        </label>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            @foreach($washes as $wash)
-                            <label class="wash-card group relative flex flex-col items-center p-4 rounded-xl cursor-pointer transition-all duration-200
-                                          bg-white border-2 border-gray-200 hover:border-blue-400 hover:shadow-lg"
-                                   data-product-id="{{ $wash->id }}">
-                                <div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-100 transition">
-                                    <i class="fas fa-car-wash text-blue-500 text-3xl"></i>
-                                </div>
-                                <span class="font-semibold text-gray-800 text-center">{{ $wash->name }}</span>
-                                <span class="product-price text-xl font-bold text-green-600 mt-2">
-                                    R$ {{ number_format($wash->getPriceForVehicleType('normal'), 2, ',', '.') }}
-                                </span>
-                                <div class="absolute top-3 right-3">
-                                    <input type="checkbox" name="products[]" value="{{ $wash->id }}" 
-                                           class="product-checkbox w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                </div>
-                            </label>
-                            @endforeach
-                        </div>
-                    </div>
-                    
-                    {{-- Produtos Adicionais --}}
-                    <div>
-                        <label class="text-sm font-semibold text-gray-600 mb-3 block">
-                            <i class="fas fa-cart-shopping text-green-500 mr-1"></i> Produtos Adicionais
-                            <span class="text-xs text-gray-400 ml-1">(opcional)</span>
-                        </label>
-                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                            @foreach($products as $product)
-                            <label class="product-card group relative flex flex-col items-center p-3 rounded-xl cursor-pointer transition-all duration-200
-                                          bg-white border-2 border-gray-200 hover:border-green-400 hover:shadow-lg"
-                                   data-product-id="{{ $product->id }}">
-                                <div class="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-2 group-hover:bg-green-100 transition">
-                                    <i class="fas fa-bottle-water text-green-500 text-2xl"></i>
-                                </div>
-                                <span class="font-semibold text-gray-800 text-center text-sm">{{ $product->name }}</span>
-                                <span class="product-price text-md font-bold text-green-600 mt-1">
-                                    R$ {{ number_format($product->getPriceForVehicleType('normal'), 2, ',', '.') }}
-                                </span>
-                                <div class="absolute top-2 right-2">
-                                    <input type="checkbox" name="products[]" value="{{ $product->id }}" 
-                                           class="product-checkbox w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500">
-                                </div>
-                            </label>
-                            @endforeach
-                        </div>
-                    </div>
-                </div>
-
-                {{-- ========== SEÇÃO 4: TOTAL ========== --}}
-                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-200">
-                    <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-14 h-14 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
-                                <i class="fas fa-calculator text-white text-2xl"></i>
-                            </div>
-                            <div>
-                                <span class="text-sm text-gray-500">Total do serviço</span>
-                                <p class="text-xs text-gray-400">Valor já com acréscimo do tipo de veículo</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <span id="totalAmount" class="text-4xl font-bold text-blue-600">R$ 0,00</span>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- ========== SEÇÃO 5: PAGAMENTO ========== --}}
-                <div class="bg-gray-50 rounded-xl p-5">
-                    <h3 class="text-md font-semibold text-gray-700 mb-4 flex items-center gap-2">
-                        <i class="fas fa-credit-card text-purple-500 text-lg"></i>
-                        Pagamento
-                        <span class="text-xs text-gray-400 bg-white px-2 py-0.5 rounded-full">Split payment</span>
-                    </h3>
-                    
-                    <div class="mb-4">
-                        <label class="block text-xs font-medium text-gray-500 mb-2">Adicionar pagamento</label>
-                        <div class="flex flex-wrap gap-3">
-                            <button type="button" onclick="addPaymentMethod('Dinheiro')" 
-                                    class="payment-btn px-5 py-2.5 bg-white border-2 border-gray-200 rounded-lg text-sm hover:border-green-400 hover:shadow-md transition flex items-center gap-2">
-                                <i class="fas fa-money-bill-wave text-green-600 text-lg"></i> Dinheiro
-                            </button>
-                            <button type="button" onclick="addPaymentMethod('Pix')" 
-                                    class="payment-btn px-5 py-2.5 bg-white border-2 border-gray-200 rounded-lg text-sm hover:border-blue-400 hover:shadow-md transition flex items-center gap-2">
-                                <i class="fas fa-qrcode text-blue-600 text-lg"></i> Pix
-                            </button>
-                            <button type="button" onclick="addPaymentMethod('Crédito')" 
-                                    class="payment-btn px-5 py-2.5 bg-white border-2 border-gray-200 rounded-lg text-sm hover:border-purple-400 hover:shadow-md transition flex items-center gap-2">
-                                <i class="fas fa-credit-card text-purple-600 text-lg"></i> Crédito
-                            </button>
-                            <button type="button" onclick="addPaymentMethod('Débito')" 
-                                    class="payment-btn px-5 py-2.5 bg-white border-2 border-gray-200 rounded-lg text-sm hover:border-purple-400 hover:shadow-md transition flex items-center gap-2">
-                                <i class="fas fa-credit-card text-purple-400 text-lg"></i> Débito
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <label class="block text-xs font-medium text-gray-500 mb-2">Pagamentos registrados</label>
-                        <div id="payments-list" class="space-y-2 min-h-[80px]">
-                            <div class="text-center py-6 text-gray-400 text-sm bg-white rounded-lg border-2 border-dashed border-gray-200" id="no-payments-msg">
-                                <i class="fas fa-plus-circle mr-1"></i> Nenhum pagamento adicionado
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="mt-4 pt-3 border-t border-gray-200">
-                        <div class="flex justify-between text-sm py-1">
-                            <span class="text-gray-600">Total do serviço:</span>
-                            <span class="font-bold" id="display-total">R$ 0,00</span>
-                        </div>
-                        <div class="flex justify-between text-sm py-1">
-                            <span class="text-gray-600">Total pago:</span>
-                            <span class="font-bold text-green-600" id="total-paid">R$ 0,00</span>
-                        </div>
-                        <div class="flex justify-between text-sm py-1 pt-2 border-t border-gray-200">
-                            <span class="text-gray-600">Restante:</span>
-                            <span class="font-bold" id="remaining-amount">R$ 0,00</span>
-                        </div>
-                    </div>
-                    
-                    <input type="hidden" name="payments" id="payments-input" value="">
-                </div>
-
-                {{-- ========== BOTÕES ========== --}}
-                <div class="flex justify-end gap-3 pt-4 border-t">
-                    <a href="{{ route('operator.orders.create') }}" 
-                       class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition flex items-center gap-2 font-medium">
-                        <i class="fas fa-times"></i> Cancelar
-                    </a>
-                    <button type="submit" 
-                            class="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition flex items-center gap-2 font-medium shadow-md">
-                        <i class="fas fa-save"></i> Criar Ordem de Serviço
-                    </button>
-                </div>
-            </div>
-        </form>
+        <a href="{{ route('operator.orders.index') }}" class="erp-small-button inline-flex items-center gap-2"><i class="fas fa-list"></i> Consultar ordens</a>
     </div>
+
+    @if($errors->any())
+        <div class="erp-error mb-5" role="alert">
+            <strong>Confira as informações antes de salvar:</strong>
+            <ul class="list-disc ml-5 mt-2 space-y-1">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+        </div>
+    @endif
+    <div id="order-notice" class="erp-error mb-5 hidden" role="alert" aria-live="polite"></div>
+
+    <form action="{{ route('operator.orders.store') }}" method="POST" id="orderForm" novalidate>
+        @csrf
+        <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_355px] gap-5 items-start">
+            <div class="space-y-5 min-w-0">
+                <section class="erp-panel" aria-labelledby="title-client">
+                    <div class="erp-panel-head"><span class="erp-step">01</span><div><h3 class="erp-section-title" id="title-client">Cliente e veículo</h3><p class="erp-hint">Placa obrigatória · identificação do cliente opcional</p></div></div>
+                    <div class="p-4 sm:p-5 space-y-4">
+                        <div class="grid sm:grid-cols-[minmax(0,1fr)_minmax(180px,.75fr)] gap-4">
+                            <div>
+                                <label class="erp-label" for="license_plate">Placa do veículo <span class="text-red-600">*</span></label>
+                                <input id="license_plate" name="license_plate" type="text" maxlength="20" value="{{ old('license_plate') }}" placeholder="ABC1D23" class="erp-input font-bold uppercase tracking-wider" required autocomplete="off" autofocus>
+                            </div>
+                            <div>
+                                <span class="erp-label">Tipo de cliente</span>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button type="button" data-customer="pf" class="erp-choice" aria-pressed="false"><i class="far fa-user"></i> Pessoa física</button>
+                                    <button type="button" data-customer="pj" class="erp-choice" aria-pressed="false"><i class="far fa-building"></i> Empresa</button>
+                                </div>
+                                <input type="hidden" name="customer_type" id="customer_type" value="{{ $customerType }}">
+                            </div>
+                        </div>
+                        <div id="pf-fields"><label class="erp-label" for="customer_name">Nome do cliente <span class="font-normal text-slate-400">(opcional)</span></label><input class="erp-input" id="customer_name" name="customer_name" maxlength="255" value="{{ old('customer_name') }}" placeholder="Nome para identificação"></div>
+                        <div id="pj-fields" class="grid sm:grid-cols-3 gap-3" hidden>
+                            <div><label class="erp-label" for="company_name">Razão social</label><input class="erp-input" id="company_name" name="company_name" value="{{ old('company_name') }}" maxlength="255" placeholder="Nome da empresa"></div>
+                            <div><label class="erp-label" for="company_document">CNPJ</label><input class="erp-input" id="company_document" name="company_document" value="{{ old('company_document') }}" maxlength="18" placeholder="00.000.000/0000-00"></div>
+                            <div><label class="erp-label" for="contact_name">Contato</label><input class="erp-input" id="contact_name" name="contact_name" value="{{ old('contact_name') }}" maxlength="255" placeholder="Responsável"></div>
+                        </div>
+                        <div>
+                            <span class="erp-label">Categoria do veículo</span>
+                            <div class="grid grid-cols-3 gap-2" id="vehicle-options">
+                                <button type="button" class="erp-choice" data-vehicle="normal" aria-pressed="false"><i class="fas fa-car-side text-slate-400"></i> Carro</button>
+                                <button type="button" class="erp-choice" data-vehicle="suv" aria-pressed="false"><i class="fas fa-car text-slate-400"></i> SUV</button>
+                                <button type="button" class="erp-choice" data-vehicle="pickup" aria-pressed="false"><i class="fas fa-truck-pickup text-slate-400"></i> Picape</button>
+                            </div>
+                            <input type="hidden" id="vehicle_type" name="vehicle_type" value="{{ $vehicleType }}">
+                        </div>
+                    </div>
+                </section>
+
+                <section class="erp-panel" aria-labelledby="title-washes">
+                    <div class="erp-panel-head"><span class="erp-step">02</span><div class="flex-1"><h3 class="erp-section-title" id="title-washes">Lavagem</h3><p class="erp-hint">Escolha um serviço principal</p></div><span class="text-xs font-semibold text-slate-400">1 serviço</span></div>
+                    <div class="p-4 sm:p-5 grid sm:grid-cols-2 gap-3" id="wash-options">
+                        @forelse($washes as $wash)
+                        <button type="button" data-wash="{{ $wash->id }}" class="erp-wash" aria-pressed="false">
+                            <span class="wash-indicator"><i class="fas fa-check text-[10px]"></i></span>
+                            <span class="flex-1 min-w-0"><span class="block font-bold text-sm text-slate-800 truncate">{{ $wash->name }}</span><span class="block text-xs text-slate-500 mt-1">Lavagem</span></span>
+                            <span class="font-extrabold text-blue-700 text-sm whitespace-nowrap" data-price-for="{{ $wash->id }}">—</span>
+                        </button>
+                        @empty
+                        <p class="text-sm text-amber-700 sm:col-span-2">Nenhum serviço de lavagem ativo. Cadastre um produto do tipo lavagem antes de criar ordens.</p>
+                        @endforelse
+                    </div>
+                </section>
+
+                <section class="erp-panel" aria-labelledby="title-products">
+                    <div class="erp-panel-head"><span class="erp-step">03</span><div class="flex-1"><h3 class="erp-section-title" id="title-products">Bebidas, lanches e adicionais</h3><p class="erp-hint">Aumente a quantidade pelo botão + · até 100 unidades por item</p></div><span class="hidden sm:inline text-xs font-semibold text-slate-400">Opcional</span></div>
+                    <div class="p-4 sm:p-5">
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <div class="relative flex-1 min-w-[180px]"><i class="fas fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-sm"></i><input id="product-search" type="search" autocomplete="off" class="erp-input !pl-9" placeholder="Buscar bebida ou produto..." aria-label="Buscar produto"></div>
+                            <button type="button" class="erp-small-button erp-filter" data-filter="all" aria-pressed="true">Todos</button>
+                            <button type="button" class="erp-small-button erp-filter" data-filter="drink" aria-pressed="false">Bebidas</button>
+                            <button type="button" class="erp-small-button erp-filter" data-filter="snack" aria-pressed="false">Lanches</button>
+                        </div>
+                        <div id="product-grid" class="grid sm:grid-cols-2 gap-3">
+                            @forelse($products as $product)
+                            <div class="erp-product" data-product="{{ $product->id }}" data-category="{{ $product->type->value }}" data-name="{{ mb_strtolower($product->name) }}" data-selected="false">
+                                <div class="min-w-0 flex-1"><p class="font-bold text-sm text-slate-800 break-words">{{ $product->name }}</p><p class="text-xs text-slate-500 mt-1"><span data-price-for="{{ $product->id }}">—</span> / un.</p></div>
+                                <div class="erp-qty" aria-label="Quantidade de {{ $product->name }}"><button type="button" data-dec="{{ $product->id }}" aria-label="Diminuir {{ $product->name }}" disabled>−</button><output id="qty-{{ $product->id }}" aria-live="polite">0</output><button type="button" data-inc="{{ $product->id }}" aria-label="Adicionar {{ $product->name }}">+</button></div>
+                            </div>
+                            @empty
+                            <p class="text-sm text-slate-500 sm:col-span-2">Nenhuma bebida ou produto adicional cadastrado.</p>
+                            @endforelse
+                        </div>
+                        <p class="text-sm text-slate-400 text-center hidden py-8" id="products-empty">Nenhum produto encontrado para a busca.</p>
+                    </div>
+                </section>
+                <section class="erp-panel" aria-labelledby="title-status">
+                    <div class="erp-panel-head"><span class="erp-step">04</span><div><h3 class="erp-section-title" id="title-status">Situação do veículo</h3><p class="erp-hint">Define a fila operacional e o controle das chaves</p></div></div>
+                    <div class="p-4 sm:p-5 grid sm:grid-cols-2 gap-3">
+                        <label class="cursor-pointer"><input class="peer sr-only" type="radio" name="initial_status" value="finished" {{ $initialStatus === 'finished' ? 'checked' : '' }}><span class="block p-4 border border-slate-200 rounded-xl peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-colors"><span class="block font-bold text-sm text-slate-900"><i class="fas fa-circle-check text-blue-600 mr-2"></i>Concluído</span><span class="block text-xs text-slate-500 mt-1">O veículo não ficará em espera</span></span></label>
+                        <label class="cursor-pointer"><input class="peer sr-only" type="radio" name="initial_status" value="waiting" {{ $initialStatus === 'waiting' ? 'checked' : '' }}><span class="block p-4 border border-slate-200 rounded-xl peer-checked:border-amber-500 peer-checked:bg-amber-50 transition-colors"><span class="block font-bold text-sm text-slate-900"><i class="fas fa-clock text-amber-600 mr-2"></i>Em espera</span><span class="block text-xs text-slate-500 mt-1">Retenção das chaves até a entrega</span></span></label>
+                    </div>
+                </section>
+            </div>
+
+            <aside class="xl:sticky xl:top-24 space-y-5 min-w-0" aria-labelledby="title-summary">
+                <section class="erp-panel overflow-hidden">
+                    <div class="erp-panel-head"><span class="erp-step"><i class="fas fa-receipt"></i></span><div><h3 class="erp-section-title" id="title-summary">Resumo da ordem</h3><p class="erp-hint">Atualização imediata, sem recarregar</p></div></div>
+                    <div class="p-4 sm:p-5">
+                        <div id="summary-items" class="divide-y divide-slate-100 mb-4"><p class="text-sm text-slate-400 py-6 text-center">Escolha uma lavagem para começar.</p></div>
+                        <div class="rounded-xl bg-slate-50 border border-slate-100 p-4 flex items-center justify-between gap-2">
+                            <div><p class="text-xs text-slate-500 font-medium">Total da ordem</p><p id="summary-count" class="text-xs text-slate-400 mt-1">0 itens</p></div>
+                            <strong class="text-2xl tracking-tight text-blue-700 tabular-nums" id="totalAmount">R$ 0,00</strong>
+                        </div>
+                    </div>
+                </section>
+                <section class="erp-panel">
+                    <div class="erp-panel-head"><span class="erp-step"><i class="fas fa-credit-card"></i></span><div><h3 class="erp-section-title">Pagamento</h3><p class="erp-hint">Opcional no cadastro · aceita divisão</p></div></div>
+                    <div class="p-4 sm:p-5 space-y-3">
+                        <div class="grid grid-cols-2 gap-2">
+                            <button class="erp-small-button !py-3" type="button" data-add-payment="pix"><i class="fas fa-qrcode text-blue-600 mr-1"></i> Pix</button>
+                            <button class="erp-small-button !py-3" type="button" data-add-payment="cash"><i class="fas fa-money-bill-wave text-emerald-600 mr-1"></i> Dinheiro</button>
+                            <button class="erp-small-button !py-3" type="button" data-add-payment="credit"><i class="fas fa-credit-card text-violet-600 mr-1"></i> Crédito</button>
+                            <button class="erp-small-button !py-3" type="button" data-add-payment="debit"><i class="fas fa-credit-card text-slate-500 mr-1"></i> Débito</button>
+                        </div>
+                        <div id="payment-list" class="space-y-2" aria-live="polite"><p class="text-sm text-slate-400 text-center py-4">Pagamento pode ser registrado depois.</p></div>
+                        <div class="border-t border-slate-100 pt-3 space-y-2">
+                            <div class="flex justify-between text-sm text-slate-500"><span>Recebido</span><span id="total-paid" class="font-bold text-slate-800 tabular-nums">R$ 0,00</span></div>
+                            <div class="flex justify-between text-sm text-slate-500"><span>Saldo pendente</span><span id="remaining-amount" class="font-extrabold text-slate-900 tabular-nums">R$ 0,00</span></div>
+                        </div>
+                        <input type="hidden" name="payments" id="payments-input" value="{{ old('payments', '[]') }}">
+                    </div>
+                </section>
+                <div class="erp-panel p-4 sm:p-5 space-y-3">
+                    <p id="save-hint" class="text-xs text-slate-500"><i class="fas fa-shield-halved text-emerald-600 mr-1"></i> Valores conferidos novamente pelo servidor ao salvar.</p>
+                    <button type="submit" class="erp-save w-full" id="save-order" {{ $washes->isEmpty() ? 'disabled' : '' }}><i class="fas fa-check"></i><span>Criar ordem</span><span class="opacity-80">·</span><span id="submit-total" class="tabular-nums">R$ 0,00</span></button>
+                    <p class="text-[11px] text-center text-slate-400">Atalho: Ctrl + Enter para salvar</p>
+                </div>
+            </aside>
+        </div>
+        <div id="order-items-inputs"></div>
+    </form>
 </div>
 
 <script>
-    let currentType = 'normal';
-    
-    // Pré-carregar os preços dos produtos
-    const productPrices = {};
-    
-    @foreach($washes as $wash)
-    productPrices[{{ $wash->id }}] = {
-        normal: {{ $wash->getPriceForVehicleType('normal') }},
-        suv: {{ $wash->getPriceForVehicleType('suv') }},
-        pickup: {{ $wash->getPriceForVehicleType('pickup') }}
-    };
-    @endforeach
-    
-    @foreach($products as $product)
-    productPrices[{{ $product->id }}] = {
-        normal: {{ $product->getPriceForVehicleType('normal') }},
-        suv: {{ $product->getPriceForVehicleType('suv') }},
-        pickup: {{ $product->getPriceForVehicleType('pickup') }}
-    };
-    @endforeach
-    
-    function selectType(type, btn) {
-        currentType = type;
-        document.getElementById('vehicle_type').value = type;
-        
-        document.querySelectorAll('.type-btn').forEach(button => {
-            button.classList.remove('bg-gradient-to-br', 'from-blue-500', 'to-blue-600', 'text-white', 'shadow-lg');
-            button.classList.add('bg-white', 'border-2', 'border-gray-200', 'text-gray-700');
-            const img = button.querySelector('img');
-            if (img) img.classList.add('grayscale');
-        });
-        
-        btn.classList.remove('bg-white', 'border-2', 'border-gray-200', 'text-gray-700');
-        btn.classList.add('bg-gradient-to-br', 'from-blue-500', 'to-blue-600', 'text-white', 'shadow-lg');
-        const btnImg = btn.querySelector('img');
-        if (btnImg) btnImg.classList.remove('grayscale');
-        
-        updatePrices();
-    }
-    
-    function updatePrices() {
-        document.querySelectorAll('.product-checkbox').forEach(checkbox => {
-            const productId = checkbox.value;
-            const price = productPrices[productId] ? productPrices[productId][currentType] : 0;
-            const priceSpan = checkbox.closest('label').querySelector('.product-price');
-            if (priceSpan) {
-                priceSpan.textContent = 'R$ ' + price.toFixed(2).replace('.', ',');
-            }
-            checkbox.dataset.currentPrice = price;
-        });
-        calculateTotal();
-    }
-    
-    function calculateTotal() {
-        let total = 0;
-        document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {
-            const price = parseFloat(checkbox.dataset.currentPrice) || 0;
-            total += price;
-        });
-        const totalElement = document.getElementById('totalAmount');
-        if (totalElement) {
-            totalElement.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
-        }
-    }
-    
-    document.querySelectorAll('.product-checkbox').forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const card = this.closest('label');
-            if (this.checked) {
-                card.classList.add('border-blue-400', 'bg-blue-50');
-            } else {
-                card.classList.remove('border-blue-400', 'bg-blue-50');
-            }
-            calculateTotal();
-        });
-    });
-    
-    // ========== SPLIT PAYMENT ==========
+(() => {
+    'use strict';
+    const root = document.getElementById('erp-order');
+    if (!root) return;
+    const form = document.getElementById('orderForm');
+    const catalog = @json($catalog);
+    const oldItems = @json($selectedItems);
+    const oldPaymentsText = @json(old('payments', '[]'));
+    const money = (cents) => (cents / 100).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+    const price = (id, type) => Number(catalog[id]?.[type] || 0);
+    const quantities = {};
+    const paymentLabels = { pix:'Pix',cash:'Dinheiro',credit:'Crédito',debit:'Débito' };
+    let vehicle = document.getElementById('vehicle_type').value;
+    let filter = 'all';
     let payments = [];
-    let orderTotal = 0;
+    let saving = false;
+    let totalCents = 0;
 
-    function addPaymentMethod(method) {
-        const remaining = orderTotal - getTotalPaid();
-        if (remaining <= 0) {
-            alert('O valor total já foi pago!');
-            return;
-        }
-        
-        let amount = prompt(`Valor em ${method}:`, remaining.toFixed(2).replace('.', ','));
-        if (amount === null) return;
-        
-        amount = parseFloat(amount.replace(',', '.'));
-        if (isNaN(amount) || amount <= 0) {
-            alert('Valor inválido');
-            return;
-        }
-        
-        if (amount > remaining) {
-            alert(`Valor excede o restante de R$ ${remaining.toFixed(2).replace('.', ',')}`);
-            return;
-        }
-        
-        payments.push({ method: method, amount: amount });
-        updatePaymentsList();
+    for (const [id, qty] of Object.entries(oldItems || {})) {
+        if (catalog[id]) quantities[id] = Math.min(100, Math.max(0, Number.parseInt(qty, 10) || 0));
     }
+    try {
+        const parsed = JSON.parse(oldPaymentsText);
+        if (Array.isArray(parsed)) payments = parsed.filter(p => paymentLabels[p.method] && Number.isFinite(Number(p.amount)) && Number(p.amount) > 0).map(p => ({ method:p.method, cents:Math.round(Number(p.amount)*100) }));
+    } catch (_) { /* dados de formulário antigo inválidos não interrompem a tela */ }
 
-    function removePayment(index) {
-        payments.splice(index, 1);
-        updatePaymentsList();
+    const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const findWash = () => Object.keys(quantities).find(id => quantities[id] > 0 && catalog[id]?.type === 'wash');
+    const selected = () => Object.keys(quantities).filter(id => quantities[id] > 0 && catalog[id]);
+    const showError = message => { const n = document.getElementById('order-notice'); n.textContent = message; n.classList.remove('hidden'); n.scrollIntoView({behavior:'smooth',block:'nearest'}); };
+    const hideError = () => document.getElementById('order-notice').classList.add('hidden');
+
+    function setVehicle(type) {
+        if (!['normal','suv','pickup'].includes(type)) return;
+        vehicle = type;
+        document.getElementById('vehicle_type').value = type;
+        root.querySelectorAll('[data-vehicle]').forEach(b => { const a = b.dataset.vehicle === type; b.dataset.active = a; b.setAttribute('aria-pressed', String(a)); });
+        root.querySelectorAll('[data-price-for]').forEach(el => el.textContent = money(price(el.dataset.priceFor, vehicle)));
+        render();
     }
-
-    function updatePaymentsList() {
-        const container = document.getElementById('payments-list');
-        const totalPaid = getTotalPaid();
-        
-        if (payments.length === 0) {
-            container.innerHTML = '<div class="text-center py-6 text-gray-400 text-sm bg-white rounded-lg border-2 border-dashed border-gray-200" id="no-payments-msg"><i class="fas fa-plus-circle mr-1"></i> Nenhum pagamento adicionado</div>';
-        } else {
-            container.innerHTML = '';
-            payments.forEach((payment, index) => {
-                const div = document.createElement('div');
-                div.className = 'flex justify-between items-center p-3 bg-white rounded-lg border border-gray-200';
-                div.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full ${payment.method === 'Dinheiro' ? 'bg-green-100' : payment.method === 'Pix' ? 'bg-blue-100' : 'bg-purple-100'} flex items-center justify-center">
-                            <i class="fas ${payment.method === 'Dinheiro' ? 'fa-money-bill-wave' : payment.method === 'Pix' ? 'fa-qrcode' : 'fa-credit-card'} ${payment.method === 'Dinheiro' ? 'text-green-600' : payment.method === 'Pix' ? 'text-blue-600' : 'text-purple-600'}"></i>
-                        </div>
-                        <span class="font-medium">${payment.method}</span>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <span class="font-bold text-green-600">R$ ${payment.amount.toFixed(2).replace('.', ',')}</span>
-                        <button type="button" onclick="removePayment(${index})" class="text-red-500 hover:text-red-700">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-        
-        document.getElementById('total-paid').textContent = 'R$ ' + totalPaid.toFixed(2).replace('.', ',');
-        const remaining = orderTotal - totalPaid;
-        document.getElementById('remaining-amount').textContent = 'R$ ' + remaining.toFixed(2).replace('.', ',');
-        
-        const remainingSpan = document.getElementById('remaining-amount');
-        remainingSpan.className = remaining > 0 ? 'font-bold text-red-600' : 'font-bold text-green-600';
-        
-        document.getElementById('payments-input').value = JSON.stringify(payments);
-    }
-
-    function getTotalPaid() {
-        return payments.reduce((sum, p) => sum + p.amount, 0);
-    }
-
-    const originalCalculateTotal = calculateTotal;
-    calculateTotal = function() {
-        originalCalculateTotal();
-        orderTotal = 0;
-        document.querySelectorAll('.product-checkbox:checked').forEach(checkbox => {
-            const price = parseFloat(checkbox.dataset.currentPrice) || 0;
-            orderTotal += price;
-        });
-        document.getElementById('display-total').textContent = 'R$ ' + orderTotal.toFixed(2).replace('.', ',');
-        updatePaymentsList();
-    };
-
-    function setCustomerType(type) {
+    function setCustomer(type) {
         document.getElementById('customer_type').value = type;
-        
-        const pfBtn = document.getElementById('btn-pf');
-        const pjBtn = document.getElementById('btn-pj');
-        const pfFields = document.getElementById('pf-fields');
-        const pjFields = document.getElementById('pj-fields');
-        
-        if (type === 'pf') {
-            pfBtn.classList.remove('bg-gray-100', 'text-gray-600');
-            pfBtn.classList.add('bg-blue-600', 'text-white', 'shadow-md');
-            pjBtn.classList.remove('bg-blue-600', 'text-white', 'shadow-md');
-            pjBtn.classList.add('bg-gray-100', 'text-gray-600');
-            pfFields.classList.remove('hidden');
-            pjFields.classList.add('hidden');
-            
-            document.getElementById('company_name').value = '';
-            document.getElementById('company_document').value = '';
-            document.getElementById('contact_name').value = '';
-        } else {
-            pjBtn.classList.remove('bg-gray-100', 'text-gray-600');
-            pjBtn.classList.add('bg-blue-600', 'text-white', 'shadow-md');
-            pfBtn.classList.remove('bg-blue-600', 'text-white', 'shadow-md');
-            pfBtn.classList.add('bg-gray-100', 'text-gray-600');
-            pjFields.classList.remove('hidden');
-            pfFields.classList.add('hidden');
-            
-            document.getElementById('customer_name').value = '';
+        root.querySelectorAll('[data-customer]').forEach(b => { const a = b.dataset.customer === type; b.dataset.active = a; b.setAttribute('aria-pressed', String(a)); });
+        document.getElementById('pf-fields').hidden = type !== 'pf';
+        document.getElementById('pj-fields').hidden = type !== 'pj';
+    }
+    function setWash(id) {
+        for (const key of Object.keys(quantities)) if (catalog[key]?.type === 'wash') delete quantities[key];
+        if (id && catalog[id]?.type === 'wash') quantities[id] = 1;
+        hideError();
+        render();
+    }
+    function changeQty(id, change) {
+        if (!catalog[id] || catalog[id].type === 'wash') return;
+        const next = Math.max(0, Math.min(100, (quantities[id] || 0) + change));
+        if (next === 0) delete quantities[id]; else quantities[id] = next;
+        hideError();
+        render();
+    }
+    function render() {
+        const ids = selected();
+        const inputs = document.getElementById('order-items-inputs');
+        inputs.replaceChildren();
+        for (const id of ids) {
+            const input = document.createElement('input');
+            input.type = 'hidden'; input.name = `items[${id}]`; input.value = quantities[id]; inputs.appendChild(input);
         }
+        const wash = findWash();
+        root.querySelectorAll('[data-wash]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.wash === wash)));
+        root.querySelectorAll('[data-product]').forEach(el => {
+            const id = el.dataset.product, count = quantities[id] || 0;
+            el.dataset.selected = String(count > 0);
+            document.getElementById(`qty-${id}`).textContent = count;
+            el.querySelector('[data-dec]').disabled = count === 0;
+            el.querySelector('[data-inc]').disabled = count >= 100;
+        });
+        const summary = document.getElementById('summary-items');
+        summary.replaceChildren();
+        totalCents = 0;
+        let units = 0;
+        if (!ids.length) summary.innerHTML = '<p class="text-sm text-slate-400 py-6 text-center">Escolha uma lavagem para começar.</p>';
+        for (const id of ids) {
+            const count = quantities[id], amount = price(id,vehicle)*count;
+            units += count; totalCents += amount;
+            const el = document.createElement('div'); el.className = 'erp-summary-line';
+            el.innerHTML = `<span class="text-slate-600 min-w-0 break-words">${count}× ${escapeHtml(catalog[id].name)}</span><strong class="text-slate-900 whitespace-nowrap tabular-nums">${money(amount)}</strong>`;
+            summary.append(el);
+        }
+        document.getElementById('totalAmount').textContent = money(totalCents);
+        document.getElementById('summary-count').textContent = `${units} ${units === 1 ? 'unidade' : 'unidades'}`;
+        document.getElementById('submit-total').textContent = money(totalCents);
+        renderPayments();
     }
-    
-    updatePrices();
+    function paidCents() { return payments.reduce((sum, p) => sum+p.cents, 0); }
+    function renderPayments() {
+        const holder = document.getElementById('payment-list');
+        holder.replaceChildren();
+        if (!payments.length) holder.innerHTML = '<p class="text-sm text-slate-400 text-center py-4">Pagamento pode ser registrado depois.</p>';
+        payments.forEach((p,i) => {
+            const row = document.createElement('div'); row.className = 'erp-payment-row';
+            row.innerHTML = `<span class="text-sm font-bold text-slate-700">${paymentLabels[p.method]}</span><label class="sr-only" for="payment-${i}">Valor ${paymentLabels[p.method]}</label><input class="erp-input !min-h-[38px] !py-2 text-right tabular-nums" id="payment-${i}" data-payment-index="${i}" inputmode="decimal" value="${(p.cents/100).toFixed(2).replace('.',',')}" autocomplete="off"><button type="button" data-remove-payment="${i}" aria-label="Remover ${paymentLabels[p.method]}" class="text-red-500 hover:bg-red-50 rounded-lg h-9"><i class="fas fa-xmark"></i></button>`;
+            holder.appendChild(row);
+        });
+        document.getElementById('total-paid').textContent = money(paidCents());
+        const remaining = totalCents-paidCents();
+        document.getElementById('remaining-amount').textContent = remaining >= 0 ? money(remaining) : `Excedente ${money(-remaining)}`;
+        document.getElementById('remaining-amount').className = 'font-extrabold tabular-nums ' + (remaining < 0 ? 'text-red-600' : remaining === 0 && totalCents > 0 ? 'text-emerald-600' : 'text-slate-900');
+        document.getElementById('payments-input').value = JSON.stringify(payments.map(p=>({method:p.method,amount:Number((p.cents/100).toFixed(2))})));
+    }
+    function parseMoney(value) {
+        const text = String(value).trim().replace(/\s/g,'').replace(/^R\$/i,'');
+        // pt-BR: 1.234,50 e 12,50; também aceita 12.50.
+        const normalized = text.includes(',') ? text.replace(/\./g,'').replace(',','.') : text;
+        if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) return null;
+        const cents = Math.round(Number(normalized)*100);
+        return Number.isSafeInteger(cents) && cents > 0 ? cents : null;
+    }
+    function filterProducts() {
+        const term = document.getElementById('product-search').value.trim().toLocaleLowerCase('pt-BR');
+        let count = 0;
+        root.querySelectorAll('[data-product]').forEach(el => {
+            const visible = (filter === 'all' || el.dataset.category === filter) && (!term || el.dataset.name.includes(term));
+            el.hidden = !visible;
+            if (visible) count++;
+        });
+        document.getElementById('products-empty').classList.toggle('hidden', count !== 0);
+    }
+    root.addEventListener('click', e => {
+        const b = e.target.closest('button');
+        if (!b) { const card = e.target.closest('[data-product]'); if (card) changeQty(card.dataset.product, 1); return; }
+        if (b.dataset.vehicle) setVehicle(b.dataset.vehicle);
+        else if (b.dataset.customer) setCustomer(b.dataset.customer);
+        else if (b.dataset.wash) setWash(b.dataset.wash);
+        else if (b.dataset.inc) changeQty(b.dataset.inc,1);
+        else if (b.dataset.dec) changeQty(b.dataset.dec,-1);
+        else if (b.dataset.filter) {
+            filter = b.dataset.filter;
+            root.querySelectorAll('[data-filter]').forEach(btn => btn.setAttribute('aria-pressed',String(btn.dataset.filter === filter)));
+            filterProducts();
+        }
+        else if (b.dataset.addPayment) {
+            const remaining = totalCents-paidCents();
+            if (remaining <= 0) { showError('Selecione uma lavagem ou ajuste os pagamentos para adicionar outra forma de recebimento.'); return; }
+            payments.push({method:b.dataset.addPayment,cents:remaining});
+            hideError(); renderPayments();
+            const input = document.getElementById(`payment-${payments.length-1}`);
+            input?.focus(); input?.select();
+        }
+        else if (b.dataset.removePayment !== undefined) { payments.splice(Number(b.dataset.removePayment),1); renderPayments(); }
+    });
+    root.addEventListener('change', e => {
+        if (!e.target.matches('[data-payment-index]')) return;
+        const i = Number(e.target.dataset.paymentIndex);
+        const cents = parseMoney(e.target.value);
+        if (cents === null) { e.target.classList.add('erp-invalid'); showError('Informe um pagamento válido, maior que zero, usando até duas casas decimais.'); return; }
+        payments[i].cents = cents;
+        hideError(); renderPayments();
+    });
+    document.getElementById('product-search').addEventListener('input', filterProducts);
+    document.getElementById('license_plate').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g,''); });
+    form.addEventListener('submit', e => {
+        if (saving) { e.preventDefault(); return; }
+        const invalidPayment = [...root.querySelectorAll('[data-payment-index]')].find(input => parseMoney(input.value) === null);
+        if (invalidPayment) { e.preventDefault(); invalidPayment.classList.add('erp-invalid'); showError('Corrija o valor do pagamento destacado antes de continuar.'); invalidPayment.focus(); return; }
+        if (!document.getElementById('license_plate').value.trim()) { e.preventDefault(); showError('Informe a placa do veículo.'); document.getElementById('license_plate').focus(); return; }
+        if (!findWash()) { e.preventDefault(); showError('Escolha uma lavagem para continuar.'); return; }
+        root.querySelectorAll('[data-payment-index]').forEach(input => { payments[Number(input.dataset.paymentIndex)].cents = parseMoney(input.value); });
+        renderPayments();
+        if (paidCents() > totalCents) { e.preventDefault(); showError('O valor recebido excede o total. Ajuste os pagamentos antes de salvar.'); return; }
+        if (totalCents <= 0) { e.preventDefault(); showError('Não é possível registrar uma ordem com total zero. Confira os preços dos produtos.'); return; }
+        saving = true;
+        const save = document.getElementById('save-order'); save.disabled = true;
+        save.querySelector('span').textContent = 'Registrando...';
+    });
+    document.addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); form.requestSubmit(); }
+        if (e.key === '/' && !e.ctrlKey && !e.metaKey && !['INPUT','TEXTAREA'].includes(document.activeElement?.tagName)) { e.preventDefault(); document.getElementById('product-search').focus(); }
+    });
+    window.addEventListener('pageshow', () => { if (saving) { saving=false; document.getElementById('save-order').disabled=false; document.getElementById('save-order').querySelector('span').textContent='Criar ordem'; } });
+    setCustomer(document.getElementById('customer_type').value);
+    setVehicle(vehicle);
+    filterProducts();
+})();
 </script>
-
-<style>
-    .type-btn {
-        transition: all 0.2s ease;
-        cursor: pointer;
-    }
-    .type-btn:hover {
-        transform: translateY(-4px);
-    }
-    .wash-card, .product-card {
-        transition: all 0.2s ease;
-        cursor: pointer;
-    }
-    .wash-card:hover, .product-card:hover {
-        transform: translateY(-4px);
-    }
-    .grayscale {
-        filter: grayscale(100%);
-        opacity: 0.6;
-    }
-    .payment-btn {
-        transition: all 0.2s ease;
-    }
-    .payment-btn:hover {
-        transform: translateY(-2px);
-    }
-</style>
 @endsection

@@ -21,7 +21,9 @@ class ServiceOrder extends Model
         'vehicle_type',
         'status',
         'total',
+        'queued_at',
         'finished_at',
+        'delivered_at',
     ];
 
     protected function casts(): array
@@ -29,7 +31,9 @@ class ServiceOrder extends Model
         return [
             'status' => ServiceOrderStatus::class,
             'total' => 'decimal:2',
+            'queued_at' => 'datetime',
             'finished_at' => 'datetime',
+            'delivered_at' => 'datetime',
         ];
     }
 
@@ -51,10 +55,9 @@ class ServiceOrder extends Model
 
     public static function generateCode(): string
     {
-        $last = self::whereYear('created_at', now()->year)
-            ->whereMonth('created_at', now()->month)
-            ->orderBy('id', 'desc')
-            ->first();
+        $last = self::whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])
+            ->latest('id')
+            ->first(['code']);
         
         $number = $last ? intval(substr($last->code, -4)) + 1 : 1;
         

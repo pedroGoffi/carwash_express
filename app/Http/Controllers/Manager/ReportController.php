@@ -104,12 +104,16 @@ class ReportController extends Controller
         ->groupBy('method')
         ->get();
         
-        // Tabela detalhada
+        // Tabela detalhada: uma única agregação, sem uma query adicional por dia.
+        $ordersByDay = ServiceOrder::where('company_id', $companyId)
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->selectRaw('DATE(created_at) as date, COUNT(*) as total')
+            ->groupByRaw('DATE(created_at)')
+            ->pluck('total', 'date');
+
         $detailedData = [];
         foreach ($dailyData as $day) {
-            $dayOrders = ServiceOrder::where('company_id', $companyId)
-                ->whereDate('created_at', $day->date)
-                ->count();
+            $dayOrders = (int) ($ordersByDay[$day->date] ?? 0);
             $detailedData[] = [
                 'date' => date('d/m/Y', strtotime($day->date)),
                 'orders' => $dayOrders,

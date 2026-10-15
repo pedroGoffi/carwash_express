@@ -1,0 +1,1 @@
+ba welcome<?php /**PATH /home/pedro/Desktop/MerchOnline/carwash/carwash_express/resources/views/welcome.blade.php ENDPATH**/ ?>

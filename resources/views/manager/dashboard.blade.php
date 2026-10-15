@@ -1,506 +1,210 @@
 @extends('layouts.app')
 
-@section('title', 'Dashboard Gerencial')
+@section('title', 'Dashboard')
 @section('header', 'Dashboard')
-@section('subheader', 'Visão completa da operação')
+@section('subheader', 'Visão rápida da operação e do resultado')
 
 @section('content')
-<div class="space-y-6">
-    
-    {{-- ========== PRIMEIRA LINHA: CARDS PRINCIPAIS ========== --}}
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        
-        {{-- Card: Ordens Hoje --}}
-        <div class="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
-            <div class="p-5">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center group-hover:bg-blue-500 transition-colors duration-300">
-                        <i class="fas fa-clipboard-list text-blue-600 text-xl group-hover:text-white transition-colors duration-300"></i>
-                    </div>
-                    <span class="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">Hoje</span>
-                </div>
-                <div>
-                    <p class="text-3xl font-bold text-gray-800">{{ number_format($totalOrdersToday ?? 0) }}</p>
-                    <p class="text-sm text-gray-500 mt-1">Ordens de serviço</p>
-                </div>
-                <div class="mt-3 pt-3 border-t border-gray-100">
-                    <div class="flex justify-between text-xs">
-                        <span class="text-gray-400">Fila: {{ number_format($queueCount ?? 0) }}</span>
-                        <span class="text-gray-400">Finalizadas: {{ number_format(($totalOrdersToday ?? 0) - ($queueCount ?? 0)) }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+@php
+    $statusMeta = [
+        'waiting' => ['label' => 'Em espera', 'class' => 'bg-amber-50 text-amber-700'],
+        'queued' => ['label' => 'Na fila', 'class' => 'bg-blue-50 text-blue-700'],
+        'finished' => ['label' => 'Aguardando entrega', 'class' => 'bg-emerald-50 text-emerald-700'],
+        'delivered' => ['label' => 'Entregue', 'class' => 'bg-slate-100 text-slate-700'],
+        'cancelled' => ['label' => 'Cancelada', 'class' => 'bg-rose-50 text-rose-700'],
+    ];
+@endphp
 
-        {{-- Card: Faturamento Hoje --}}
-        <div class="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
-            <div class="p-5">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center group-hover:bg-green-500 transition-colors duration-300">
-                        <i class="fas fa-dollar-sign text-green-600 text-xl group-hover:text-white transition-colors duration-300"></i>
-                    </div>
-                    <span class="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">↑ Hoje</span>
-                </div>
-                <div>
-                    <p class="text-3xl font-bold text-green-600">R$ {{ number_format($totalRevenueToday ?? 0, 2, ',', '.') }}</p>
-                    <p class="text-sm text-gray-500 mt-1">Faturamento do dia</p>
-                </div>
-                <div class="mt-3 pt-3 border-t border-gray-100">
-                    <div class="flex justify-between text-xs">
-                        <span class="text-gray-400">Ticket médio: R$ {{ number_format($averageTicket ?? 0, 2, ',', '.') }}</span>
-                    </div>
-                </div>
-            </div>
+<div class="space-y-6" x-data="managerDashboard()" x-init="scheduleAnalytics()">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+            <h2 class="text-2xl font-bold text-slate-950">Olá, {{ auth()->user()->name }}</h2>
+            <p class="text-sm text-slate-500 mt-1">Os dados operacionais aparecem primeiro; análises financeiras carregam em seguida sem travar a tela.</p>
         </div>
-
-        {{-- Card: Clientes Ativos --}}
-        <div class="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
-            <div class="p-5">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center group-hover:bg-purple-500 transition-colors duration-300">
-                        <i class="fas fa-users text-purple-600 text-xl group-hover:text-white transition-colors duration-300"></i>
-                    </div>
-                    <span class="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">Últimos 30 dias</span>
-                </div>
-                <div>
-                    <p class="text-3xl font-bold text-gray-800">{{ number_format($totalCustomers ?? 0) }}</p>
-                    <p class="text-sm text-gray-500 mt-1">Clientes ativos</p>
-                </div>
-                <div class="mt-3 pt-3 border-t border-gray-100">
-                    <div class="flex justify-between text-xs">
-                        <span class="text-gray-400">PJ: {{ number_format($totalCorporateCustomers ?? 0) }}</span>
-                        <span class="text-gray-400">PF: {{ number_format(($totalCustomers ?? 0) - ($totalCorporateCustomers ?? 0)) }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- Card: Produtos Ativos --}}
-        <div class="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group">
-            <div class="p-5">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center group-hover:bg-orange-500 transition-colors duration-300">
-                        <i class="fas fa-box text-orange-600 text-xl group-hover:text-white transition-colors duration-300"></i>
-                    </div>
-                    <span class="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded-full">Ativos</span>
-                </div>
-                <div>
-                    <p class="text-3xl font-bold text-gray-800">{{ number_format($totalProducts ?? 0) }}</p>
-                    <p class="text-sm text-gray-500 mt-1">Produtos disponíveis</p>
-                </div>
-                <div class="mt-3 pt-3 border-t border-gray-100">
-                    <div class="flex justify-between text-xs">
-                        <span class="text-gray-400">Lavagens: {{ number_format($totalWashes ?? 0) }}</span>
-                        <span class="text-gray-400">Adicionais: {{ number_format(($totalProducts ?? 0) - ($totalWashes ?? 0)) }}</span>
-                    </div>
-                </div>
-            </div>
+        <div class="flex gap-2">
+            <a href="{{ route('operator.orders.index') }}" class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                <i class="fas fa-list"></i> Todas as ordens
+            </a>
+            <a href="{{ route('operator.orders.create') }}" class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 shadow-sm">
+                <i class="fas fa-plus"></i> Nova ordem
+            </a>
         </div>
     </div>
 
-    {{-- ========== SEGUNDA LINHA: FINANCEIRO ========== --}}
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        
-        {{-- Card: Gastos com Colaboradores --}}
-        <div class="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 border-l-4 border-red-500">
-            <div class="p-5">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                        <i class="fas fa-hand-holding-usd text-red-600 text-xl"></i>
-                    </div>
-                    <span class="text-xs text-red-600 bg-red-50 px-2 py-1 rounded-full">Este mês</span>
-                </div>
-                <div>
-                    <p class="text-sm text-gray-500 mt-1">Gastos com Colaboradores</p>
-                    <p class="text-3xl font-bold text-red-600">R$ {{ number_format(($totalSalaries ?? 0) + ($totalAdvances ?? 0) + ($totalConsumptions ?? 0), 2, ',', '.') }}</p>
-                </div>
-                <div class="mt-3 pt-3 border-t border-gray-100">
-                    <div class="grid grid-cols-3 gap-2 text-xs">
-                        <div class="text-center">
-                            <p class="text-gray-400">Salários</p>
-                            <p class="font-semibold text-gray-700">R$ {{ number_format($totalSalaries ?? 0, 2, ',', '.') }}</p>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-gray-400">Vales</p>
-                            <p class="font-semibold text-gray-700">R$ {{ number_format($totalAdvances ?? 0, 2, ',', '.') }}</p>
-                        </div>
-                        <div class="text-center">
-                            <p class="text-gray-400">Consumo</p>
-                            <p class="font-semibold text-gray-700">R$ {{ number_format($totalConsumptions ?? 0, 2, ',', '.') }}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <div class="grid grid-cols-2 xl:grid-cols-5 gap-3 sm:gap-4">
+        <div class="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-sm">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Ordens hoje</p>
+            <p class="mt-2 text-3xl font-bold text-slate-950">{{ $totalOrdersToday }}</p>
+            <p class="mt-1 text-xs text-slate-500">{{ $totalOrdersMonth }} no mês</p>
         </div>
-
-        {{-- Card: Faturamento do Mês --}}
-        <div class="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 border-l-4 border-blue-500">
-            <div class="p-5">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                        <i class="fas fa-chart-line text-blue-600 text-xl"></i>
-                    </div>
-                    <span class="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">Este mês</span>
-                </div>
-                <div>
-                    <p class="text-sm text-gray-500 mt-1">Faturamento do Mês</p>
-                    <p class="text-3xl font-bold text-blue-600">R$ {{ number_format($totalRevenueMonth ?? 0, 2, ',', '.') }}</p>
-                </div>
-                <div class="mt-3 pt-3 border-t border-gray-100">
-                    <div class="flex justify-between text-xs">
-                        <span class="text-gray-400">Ordens: {{ number_format($totalOrdersMonth ?? 0) }}</span>
-                        <span class="text-gray-400">Ticket médio: R$ {{ number_format($averageTicketMonth ?? 0, 2, ',', '.') }}</span>
-                    </div>
-                </div>
-            </div>
+        <div class="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-sm">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Faturamento hoje</p>
+            <p class="mt-2 text-2xl sm:text-3xl font-bold text-slate-950">R$ {{ number_format($totalRevenueToday, 2, ',', '.') }}</p>
+            <p class="mt-1 text-xs text-slate-500">Ticket médio R$ {{ number_format($averageTicketToday, 2, ',', '.') }}</p>
         </div>
-
-        {{-- Card: Lucro Líquido --}}
-        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300">
-            <div class="p-5 text-white">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                        <i class="fas fa-chart-pie text-white text-xl"></i>
-                    </div>
-                    <span class="text-xs text-white/80 bg-white/20 px-2 py-1 rounded-full">Margem: {{ number_format($profitMargin ?? 0, 1) }}%</span>
-                </div>
-                <div>
-                    <p class="text-sm text-white/80 mt-1">Lucro Líquido</p>
-                    <p class="text-3xl font-bold text-white">R$ {{ number_format($totalProfit ?? 0, 2, ',', '.') }}</p>
-                </div>
-                <div class="mt-3 pt-3 border-t border-white/20">
-                    <div class="flex justify-between text-xs">
-                        <span class="text-white/70">Receita: R$ {{ number_format($totalRevenueMonth ?? 0, 2, ',', '.') }}</span>
-                        <span class="text-white/70">Gastos: -R$ {{ number_format(($totalSalaries ?? 0) + ($totalAdvances ?? 0) + ($totalConsumptions ?? 0), 2, ',', '.') }}</span>
-                    </div>
-                </div>
-            </div>
+        <div class="rounded-2xl bg-amber-50 border border-amber-100 p-4 sm:p-5">
+            <p class="text-xs font-semibold uppercase tracking-wide text-amber-600">Em espera</p>
+            <p class="mt-2 text-3xl font-bold text-amber-900">{{ $waitingCount }}</p>
+            <p class="mt-1 text-xs text-amber-700">Veículos deixados para depois</p>
+        </div>
+        <div class="rounded-2xl bg-blue-50 border border-blue-100 p-4 sm:p-5">
+            <p class="text-xs font-semibold uppercase tracking-wide text-blue-600">Na fila</p>
+            <p class="mt-2 text-3xl font-bold text-blue-900">{{ $queueCount }}</p>
+            <p class="mt-1 text-xs text-blue-700">Aguardando lavagem</p>
+        </div>
+        <div class="rounded-2xl bg-emerald-50 border border-emerald-100 p-4 sm:p-5 col-span-2 xl:col-span-1">
+            <p class="text-xs font-semibold uppercase tracking-wide text-emerald-600">Prontos</p>
+            <p class="mt-2 text-3xl font-bold text-emerald-900">{{ $readyCount }}</p>
+            <p class="mt-1 text-xs text-emerald-700">Aguardando entrega</p>
         </div>
     </div>
 
-    {{-- ========== TERCEIRA LINHA: GRÁFICOS ========== --}}
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {{-- Gráfico de Faturamento --}}
-        <div class="bg-white rounded-2xl shadow-sm">
-            <div class="px-6 py-4 border-b border-gray-100">
-                <div class="flex items-center justify-between flex-wrap gap-3">
-                    <h3 class="font-semibold text-gray-800">
-                        <i class="fas fa-chart-line text-blue-500 mr-2"></i> Evolução do Faturamento
-                    </h3>
-                    <div class="flex gap-2">
-                        <button onclick="changeChartPeriod('week')" class="period-btn active px-3 py-1 text-xs rounded-lg bg-blue-50 text-blue-600 font-medium">Semana</button>
-                        <button onclick="changeChartPeriod('month')" class="period-btn px-3 py-1 text-xs rounded-lg text-gray-500 hover:bg-gray-100 font-medium">Mês</button>
-                    </div>
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <section class="xl:col-span-2 rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                    <h3 class="font-bold text-slate-900">Últimas ordens</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">Carregadas junto com a tela inicial</p>
                 </div>
-            </div>
-            <div class="p-6">
-                <canvas id="revenueChart" height="280"></canvas>
-            </div>
-        </div>
-
-        {{-- Gráfico de Receita vs Despesa --}}
-        <div class="bg-white rounded-2xl shadow-sm">
-            <div class="px-6 py-4 border-b border-gray-100">
-                <h3 class="font-semibold text-gray-800">
-                    <i class="fas fa-chart-bar text-green-500 mr-2"></i> Receita vs Despesa
-                </h3>
-                <div class="flex gap-4 mt-2">
-                    <div class="flex items-center gap-2">
-                        <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-                        <span class="text-xs text-gray-500">Receita</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <div class="w-3 h-3 bg-red-500 rounded-full"></div>
-                        <span class="text-xs text-gray-500">Despesa</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
-                        <span class="text-xs text-gray-500">Lucro</span>
-                    </div>
-                </div>
-            </div>
-            <div class="p-6">
-                <canvas id="profitChart" height="280"></canvas>
-            </div>
-        </div>
-    </div>
-
-    {{-- ========== QUARTA LINHA: RANKINGS E TABELAS ========== --}}
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {{-- Ranking de Produtos --}}
-        <div class="bg-white rounded-2xl shadow-sm">
-            <div class="px-6 py-4 border-b border-gray-100">
-                <h3 class="font-semibold text-gray-800">
-                    <i class="fas fa-trophy text-yellow-500 mr-2"></i> Produtos Mais Vendidos
-                </h3>
-            </div>
-            <div class="p-6">
-                <div class="space-y-5">
-                    @forelse($topProducts ?? [] as $index => $product)
-                    <div class="group">
-                        <div class="flex justify-between items-center mb-1">
-                            <div class="flex items-center gap-3">
-                                <div class="w-7 h-7 rounded-full 
-                                    {{ $index == 0 ? 'bg-yellow-500' : ($index == 1 ? 'bg-gray-400' : ($index == 2 ? 'bg-orange-500' : 'bg-gray-300')) }} 
-                                    flex items-center justify-center text-white text-xs font-bold group-hover:scale-110 transition-transform">
-                                    {{ $index + 1 }}
-                                </div>
-                                <span class="font-medium text-gray-700">{{ $product->name }}</span>
-                            </div>
-                            <span class="font-bold text-gray-800">{{ $product->total }} vendas</span>
-                        </div>
-                        <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                            <div class="bg-blue-500 h-2.5 rounded-full transition-all duration-500 group-hover:bg-blue-600" 
-                                 style="width: {{ ($product->total / ($topProducts->first()->total ?? 1)) * 100 }}%"></div>
-                        </div>
-                    </div>
-                    @empty
-                    <div class="text-center py-10 text-gray-400">
-                        <i class="fas fa-chart-simple text-4xl mb-3"></i>
-                        <p>Nenhum dado disponível</p>
-                    </div>
-                    @endforelse
-                </div>
-            </div>
-        </div>
-
-        {{-- Últimas Ordens --}}
-        <div class="bg-white rounded-2xl shadow-sm">
-            <div class="px-6 py-4 border-b border-gray-100">
-                <h3 class="font-semibold text-gray-800">
-                    <i class="fas fa-history text-blue-500 mr-2"></i> Últimas Atividades
-                </h3>
+                <a href="{{ route('operator.orders.index') }}" class="text-sm font-semibold text-blue-600 hover:text-blue-700">Ver todas</a>
             </div>
             <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead class="bg-gray-50 border-b border-gray-100">
+                <table class="w-full min-w-[720px]">
+                    <thead class="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">OS</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
-                            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="text-left px-5 py-3">OS</th>
+                            <th class="text-left px-5 py-3">Cliente / veículo</th>
+                            <th class="text-left px-5 py-3">Status</th>
+                            <th class="text-right px-5 py-3">Valor</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-50">
-                        @forelse($recentOrders ?? [] as $order)
-                        <tr class="hover:bg-gray-50 transition-all duration-200">
-                            <td class="px-6 py-3">
-                                <div class="flex items-center gap-2">
-                                    <span class="font-mono text-sm font-bold text-blue-600">#{{ $order->code }}</span>
-                                </div>
+                    <tbody class="divide-y divide-slate-100">
+                    @forelse($recentOrders as $order)
+                        @php($meta = $statusMeta[$order['status']] ?? ['label' => ucfirst($order['status']), 'class' => 'bg-slate-100 text-slate-700'])
+                        <tr class="hover:bg-slate-50/70">
+                            <td class="px-5 py-4 font-mono text-sm font-bold text-blue-700">#{{ $order['code'] }}</td>
+                            <td class="px-5 py-4">
+                                <p class="font-semibold text-sm text-slate-800">{{ $order['customer_name'] ?: 'Cliente não informado' }}</p>
+                                <p class="text-xs text-slate-500 mt-0.5">{{ $order['license_plate'] ?: 'Sem placa' }}</p>
                             </td>
-                            <td class="px-6 py-3 text-sm text-gray-600">{{ $order->customer_name ?? 'Cliente não identificado' }}</td>
-                            <td class="px-6 py-3 text-right text-sm font-semibold text-green-600">R$ {{ number_format($order->total, 2, ',', '.') }}</td>
-                            <td class="px-6 py-3 text-center">
-                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium
-                                    {{ $order->status == 'queued' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800' }}">
-                                    <span class="w-1.5 h-1.5 rounded-full mr-1 {{ $order->status == 'queued' ? 'bg-yellow-500 animate-pulse' : 'bg-green-500' }}"></span>
-                                    {{ $order->status == 'queued' ? 'Na Fila' : 'Finalizado' }}
-                                </span>
-                            </td>
+                            <td class="px-5 py-4"><span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ $meta['class'] }}">{{ $meta['label'] }}</span></td>
+                            <td class="px-5 py-4 text-right font-bold text-slate-900">R$ {{ number_format($order['total'], 2, ',', '.') }}</td>
                         </tr>
-                        @empty
-                        <tr>
-                            <td colspan="4" class="px-6 py-10 text-center text-gray-400">
-                                <i class="fas fa-inbox text-3xl mb-2"></i>
-                                <p>Nenhuma ordem registrada</p>
-                            </td>
-                        </tr>
-                        @endforelse
+                    @empty
+                        <tr><td colspan="4" class="px-5 py-12 text-center text-sm text-slate-400">Nenhuma ordem registrada.</td></tr>
+                    @endforelse
                     </tbody>
                 </table>
             </div>
-            <div class="px-6 py-3 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
-                <a href="#" class="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium">
-                    Ver todas as ordens <i class="fas fa-arrow-right text-xs"></i>
+        </section>
+
+        <section class="rounded-2xl bg-white border border-slate-200 text-slate-900 p-5 shadow-sm">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs uppercase tracking-[.16em] text-slate-500">Resultado do mês</p>
+                    <h3 class="text-lg font-bold mt-1">Financeiro</h3>
+                </div>
+                <span x-show="loading" class="text-xs text-slate-400">Carregando…</span>
+            </div>
+
+            <template x-if="analyticsError">
+                <div class="mt-6 rounded-xl bg-amber-50 border border-amber-200 p-4 text-sm text-amber-900">
+                    <p class="font-semibold">Análise temporariamente indisponível</p>
+                    <p class="text-xs text-amber-700 mt-1">A operação continua funcionando. Você pode tentar novamente sem sair da página.</p>
+                    <button @click="loadAnalytics()" class="mt-3 rounded-lg bg-blue-50 text-blue-700 px-3 py-2 text-xs font-bold hover:bg-blue-100">Tentar novamente</button>
+                </div>
+            </template>
+
+            <div x-show="!analyticsError" class="mt-5 space-y-4">
+                <div class="rounded-xl bg-slate-50 p-4">
+                    <p class="text-xs text-slate-400">Faturamento</p>
+                    <p class="text-2xl font-bold mt-1" x-text="money(analytics.monthRevenue)">—</p>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="rounded-xl bg-slate-50 p-3"><p class="text-[11px] text-slate-400">Custos</p><p class="font-bold mt-1" x-text="money(analytics.expenses)">—</p></div>
+                    <div class="rounded-xl bg-slate-50 p-3"><p class="text-[11px] text-slate-400">Resultado</p><p class="font-bold mt-1" :class="analytics.profit >= 0 ? 'text-emerald-600' : 'text-rose-600'" x-text="money(analytics.profit)">—</p></div>
+                </div>
+                <a href="{{ route('manager.payroll.index') }}" class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold hover:bg-slate-50">
+                    Folha & custos <i class="fas fa-arrow-right"></i>
                 </a>
             </div>
-        </div>
+        </section>
     </div>
 
-    {{-- ========== QUINTA LINHA: RESUMO DO DIA ========== --}}
-    <div class="bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-600 rounded-2xl shadow-lg overflow-hidden">
-        <div class="px-6 py-6">
-            <div class="flex flex-col lg:flex-row justify-between items-center gap-4">
-                <div class="flex items-center gap-4">
-                    <div class="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center">
-                        <i class="fas fa-calendar-day text-white text-2xl"></i>
-                    </div>
-                    <div>
-                        <p class="text-white/80 text-sm">Resumo Operacional</p>
-                        <p class="text-white text-xl font-bold">{{ now()->format('l, d \\d\\e F \\d\\e Y') }}</p>
-                    </div>
-                </div>
-                <div class="flex flex-wrap gap-8">
-                    <div class="text-center">
-                        <p class="text-white/70 text-xs uppercase tracking-wide">Ordens</p>
-                        <p class="text-white text-3xl font-bold">{{ $totalOrdersToday ?? 0 }}</p>
-                    </div>
-                    <div class="text-center">
-                        <p class="text-white/70 text-xs uppercase tracking-wide">Faturamento</p>
-                        <p class="text-white text-3xl font-bold">R$ {{ number_format($totalRevenueToday ?? 0, 2, ',', '.') }}</p>
-                    </div>
-                    <div class="text-center">
-                        <p class="text-white/70 text-xs uppercase tracking-wide">Ticket Médio</p>
-                        <p class="text-white text-3xl font-bold">R$ {{ number_format($averageTicket ?? 0, 2, ',', '.') }}</p>
-                    </div>
-                    <div class="text-center">
-                        <p class="text-white/70 text-xs uppercase tracking-wide">Na Fila</p>
-                        <p class="text-white text-3xl font-bold">{{ $queueCount ?? 0 }}</p>
-                    </div>
-                </div>
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <section class="rounded-2xl bg-white border border-slate-200 shadow-sm p-5">
+            <div class="flex items-center justify-between mb-5">
+                <div><h3 class="font-bold text-slate-900">Últimos 6 meses</h3><p class="text-xs text-slate-500 mt-0.5">Receita x custos</p></div>
+                <span class="text-[11px] text-slate-400">cache de 60s</span>
             </div>
-        </div>
+            <div x-show="loading" class="space-y-3 animate-pulse">
+                <div class="h-10 bg-slate-100 rounded-lg"></div><div class="h-10 bg-slate-100 rounded-lg"></div><div class="h-10 bg-slate-100 rounded-lg"></div>
+            </div>
+            <div x-show="!loading && !analyticsError" class="space-y-4">
+                <template x-for="row in analytics.months" :key="row.label">
+                    <div>
+                        <div class="flex justify-between gap-3 text-xs mb-1.5"><span class="font-semibold text-slate-600" x-text="row.label"></span><span class="text-slate-500" x-text="money(row.revenue)"></span></div>
+                        <div class="h-2.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full rounded-full bg-blue-600" :style="`width:${barWidth(row.revenue)}%`"></div></div>
+                    </div>
+                </template>
+            </div>
+        </section>
+
+        <section class="rounded-2xl bg-white border border-slate-200 shadow-sm p-5">
+            <div class="mb-5"><h3 class="font-bold text-slate-900">Serviços mais vendidos</h3><p class="text-xs text-slate-500 mt-0.5">Quantidade acumulada</p></div>
+            <div x-show="loading" class="space-y-3 animate-pulse"><div class="h-12 bg-slate-100 rounded-lg"></div><div class="h-12 bg-slate-100 rounded-lg"></div><div class="h-12 bg-slate-100 rounded-lg"></div></div>
+            <div x-show="!loading && !analyticsError" class="space-y-3">
+                <template x-for="(item,index) in analytics.topProducts" :key="item.name">
+                    <div class="flex items-center gap-3 rounded-xl border border-slate-100 p-3">
+                        <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600" x-text="index+1"></div>
+                        <div class="min-w-0 flex-1"><p class="font-semibold text-sm text-slate-800 truncate" x-text="item.name"></p></div>
+                        <span class="text-sm font-bold text-slate-900" x-text="item.total"></span>
+                    </div>
+                </template>
+                <p x-show="analytics.topProducts.length === 0" class="py-10 text-center text-sm text-slate-400">Sem dados no período.</p>
+            </div>
+        </section>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    let revenueChart, profitChart;
-
-    // Gráfico de Faturamento
-    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
-    revenueChart = new Chart(revenueCtx, {
-        type: 'line',
-        data: {
-            labels: {!! json_encode($revenueByDay->pluck('date') ?? []) !!},
-            datasets: [{
-                label: 'Faturamento (R$)',
-                data: {!! json_encode($revenueByDay->pluck('total') ?? []) !!},
-                borderColor: '#3b82f6',
-                backgroundColor: 'rgba(59, 130, 246, 0.05)',
-                borderWidth: 3,
-                pointRadius: 4,
-                pointBackgroundColor: '#3b82f6',
-                pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                tension: 0.3,
-                fill: true
-            }]
+function managerDashboard() {
+    return {
+        loading: true,
+        analyticsError: false,
+        analytics: { monthRevenue: 0, expenses: 0, profit: 0, months: [], topProducts: [] },
+        scheduleAnalytics() {
+            if ('requestIdleCallback' in window) requestIdleCallback(() => this.loadAnalytics(), {timeout: 1700});
+            else setTimeout(() => this.loadAnalytics(), 150);
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return 'R$ ' + context.raw.toFixed(2).replace('.', ',');
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return 'R$ ' + value.toFixed(0);
-                        }
-                    }
-                }
+        async loadAnalytics() {
+            this.loading = true;
+            this.analyticsError = false;
+            try {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), 7000);
+                const response = await fetch(@json(route('manager.dashboard.analytics')), {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    signal: controller.signal,
+                });
+                clearTimeout(timer);
+                if (!response.ok) throw new Error('analytics unavailable');
+                this.analytics = await response.json();
+            } catch (error) {
+                this.analyticsError = true;
+            } finally {
+                this.loading = false;
             }
-        }
-    });
-
-    // Gráfico de Receita vs Despesa
-    const profitCtx = document.getElementById('profitChart').getContext('2d');
-    profitChart = new Chart(profitCtx, {
-        type: 'bar',
-        data: {
-            labels: {!! json_encode($chartMonths ?? []) !!},
-            datasets: [
-                {
-                    label: 'Receita',
-                    data: {!! json_encode($chartRevenue ?? []) !!},
-                    backgroundColor: 'rgba(34, 197, 94, 0.7)',
-                    borderColor: '#22c55e',
-                    borderWidth: 1,
-                    borderRadius: 8,
-                    barPercentage: 0.7
-                },
-                {
-                    label: 'Despesa',
-                    data: {!! json_encode($chartExpenses ?? []) !!},
-                    backgroundColor: 'rgba(239, 68, 68, 0.7)',
-                    borderColor: '#ef4444',
-                    borderWidth: 1,
-                    borderRadius: 8,
-                    barPercentage: 0.7
-                },
-                {
-                    label: 'Lucro',
-                    data: {!! json_encode($chartProfit ?? []) !!},
-                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                    borderColor: '#3b82f6',
-                    borderWidth: 2,
-                    borderRadius: 8,
-                    type: 'line',
-                    tension: 0.3,
-                    fill: false,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#3b82f6'
-                }
-            ]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ': R$ ' + context.raw.toFixed(2).replace('.', ',');
-                        }
-                    }
-                },
-                legend: {
-                    position: 'top',
-                    labels: {
-                        usePointStyle: true,
-                        boxWidth: 10
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return 'R$ ' + value.toFixed(0);
-                        }
-                    },
-                    grid: {
-                        color: '#e5e7eb'
-                    }
-                },
-                x: {
-                    grid: {
-                        display: false
-                    }
-                }
-            }
-        }
-    });
-
-    function changeChartPeriod(period) {
-        document.querySelectorAll('.period-btn').forEach(btn => {
-            btn.classList.remove('bg-blue-50', 'text-blue-600');
-            btn.classList.add('text-gray-500');
-        });
-        event.target.classList.add('bg-blue-50', 'text-blue-600');
-        
-        // AJAX para buscar dados do período
-        fetch(`/manager/dashboard/chart-data?period=${period}`)
-            .then(response => response.json())
-            .then(data => {
-                revenueChart.data.labels = data.labels;
-                revenueChart.data.datasets[0].data = data.values;
-                revenueChart.update();
-            });
+        money(value) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value || 0));
+        },
+        barWidth(value) {
+            const values = (this.analytics.months || []).map(i => Number(i.revenue || 0));
+            const max = Math.max(...values, 1);
+            return Math.max(2, (Number(value || 0) / max) * 100);
+        },
     }
+}
 </script>
 @endsection

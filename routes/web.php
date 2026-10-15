@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Manager\AdvanceController;
+use App\Http\Controllers\Manager\EmployeeExpenseController;
 use App\Http\Controllers\Manager\ConsumptionController;
 use App\Http\Controllers\Manager\DashboardController as ManagerDashboardController;
 use App\Http\Controllers\Manager\NoteController;
@@ -18,41 +19,46 @@ use Illuminate\Support\Facades\Route;
 
 
 
+Route::get('/health', fn () => response()->json(['status' => 'ok']))->name('health');
+
 Route::get('/', function () {
-    return redirect()->route('login');
+    return auth()->check() ? redirect()->route('dashboard') : redirect()->route('login');
 });
 require __DIR__.'/auth.php';
 
 // ========== ROTAS DO ADMIN ==========
-Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 });
 
 // ========== ROTAS DO GERENTE ==========
-Route::middleware(['auth'])->prefix('manager')->name('manager.')->group(function () {
+Route::middleware(['auth', 'role:admin,manager'])->prefix('manager')->name('manager.')->group(function () {
     
     // Dashboard
     Route::get('/dashboard', [ManagerDashboardController::class, 'index'])->name('dashboard');
-    Route::get('/dashboard/chart-data', [ManagerDashboardController::class, 'chartData'])->name('manager.dashboard.chart');
+    Route::get('/dashboard/analytics', [ManagerDashboardController::class, 'analytics'])->name('dashboard.analytics');
     // Produtos (CRUD completo)
-    Route::resource('products', ProductController::class);
+    Route::resource('products', ProductController::class)->except(['show']);
     
     // Usuários (CRUD completo)
-    Route::resource('users', UserController::class);
+    Route::resource('users', UserController::class)->except(['show']);
     
     // Relatórios
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/data', [ReportController::class, 'getData'])->name('reports.data');
 
     // Adiantamentos
-    Route::resource('advances', AdvanceController::class)->except(['show', 'edit', 'update']);
+    Route::resource('advances', AdvanceController::class)->except(['show', 'create', 'edit', 'update']);
 
     // Consumos
-    Route::resource('consumptions', ConsumptionController::class)->except(['show', 'edit', 'update']);
+    Route::resource('consumptions', ConsumptionController::class)->except(['show', 'create', 'edit', 'update']);
     
     // Folha de Pagamento
     Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
-    Route::put('/payroll/{user}', [PayrollController::class, 'update'])->name('payroll.update');
+    // Remuneracao é editada apenas no cadastro do colaborador.
+    Route::post('/expenses', [EmployeeExpenseController::class, 'store'])->name('expenses.store');
+    Route::delete('/expenses/{expense}', [EmployeeExpenseController::class, 'destroy'])->name('expenses.destroy');
+    Route::post('/payroll/close-period', [PayrollController::class, 'closePeriod'])->name('payroll.close-period');
 
     
     // Anotações
@@ -62,8 +68,12 @@ Route::middleware(['auth'])->prefix('manager')->name('manager.')->group(function
 });
 
 // ========== ROTAS DO OPERADOR ==========
-Route::middleware(['auth'])->prefix('operator')->name('operator.')->group(function () {    
-    // Criar Ordem de Serviço
+Route::middleware(['auth', 'role:admin,manager,operator'])->prefix('operator')->name('operator.')->group(function () {    
+    // Alias para clientes antigos ou redirecionamentos pós-login.
+    Route::get('/dashboard', fn () => redirect()->route('operator.orders.index'))->name('dashboard');
+
+    // Ordens de Serviço
+    Route::get('/orders', [ServiceOrderController::class, 'index'])->name('orders.index');
     Route::get('/create-order', [ServiceOrderController::class, 'create'])->name('orders.create');
     Route::post('/orders', [ServiceOrderController::class, 'store'])->name('orders.store');
     
@@ -72,6 +82,8 @@ Route::middleware(['auth'])->prefix('operator')->name('operator.')->group(functi
     
     Route::get('/orders/{order}/receipt', [ServiceOrderController::class, 'receipt'])->name('orders.receipt');
     Route::post('/orders/{order}/finish', [ServiceOrderController::class, 'finish'])->name('orders.finish');
+    Route::post('/orders/{order}/status', [ServiceOrderController::class, 'updateStatus'])->name('orders.status');
+    Route::post('/orders/{order}/payments', [ServiceOrderController::class, 'addPayment'])->name('orders.payments.store');
     Route::post('/orders/{order}/request-cancel', [ServiceOrderController::class, 'requestCancel'])->name('orders.request-cancel');
 
     // Lista de serviços para entregar
@@ -103,5 +115,5 @@ Route::middleware(['auth'])->get('/dashboard', function () {
         return redirect()->route('operator.orders.create');
     }
     
-    return redirect('/');
+    abort(403, 'Perfil de usuário sem painel configurado.');
 })->name('dashboard');

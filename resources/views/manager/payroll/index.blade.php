@@ -1,169 +1,119 @@
 @extends('layouts.app')
-
-@section('title', 'Folha de Pagamento')
-@section('header', 'Folha de Pagamento')
-@section('subheader', 'Calcule os salários e descontos dos funcionários')
-
+@section('title','Folha e custos')
+@section('header','Folha e custos')
+@section('subheader','Salários, descontos e despesas da equipe em um único lugar')
 @section('content')
-<div class="space-y-6">
-    
-    {{-- Cards de Resumo --}}
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg p-5 text-white">
-            <div class="flex items-center gap-3 mb-3">
-                <i class="fas fa-calculator text-2xl text-white/80"></i>
-                <p class="text-white/80 text-sm">Total de Salários</p>
+@php
+    $month = $period->format('Y-m');
+    $employee = $userId ? $team->firstWhere('id', $userId) : null;
+    $cats = ['benefit'=>'Benefícios','transport'=>'Transporte','meal'=>'Alimentação','tax'=>'Encargos','bonus'=>'Bonificação','equipment'=>'Equipamentos','other'=>'Outros'];
+    $tabLink = fn ($t) => route('manager.payroll.index', array_filter(['month'=>$month,'user_id'=>$userId,'tab'=>$t]));
+@endphp
+<div class="space-y-5">
+    <div class="cw-card p-5">
+        <div class="flex flex-col lg:flex-row justify-between lg:items-center gap-4">
+            <div>
+                <p class="cw-eyebrow">Competência financeira</p>
+                <h2 class="text-xl font-bold text-slate-900 mt-1">{{ $period->locale('pt_BR')->translatedFormat('F \d\e Y') }}</h2>
+                <p class="text-sm text-slate-500 mt-1">{{ $employee ? 'Custos exclusivos de '.$employee->name : 'Visão geral de colaboradores ativos' }} · {{ $closedForPeriod ? 'Fechamento registrado' : 'Competência aberta' }}</p>
             </div>
-            <p class="text-3xl font-bold">R$ {{ number_format($totalSalary, 2, ',', '.') }}</p>
-        </div>
-        
-        <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl shadow-lg p-5 text-white">
-            <div class="flex items-center gap-3 mb-3">
-                <i class="fas fa-hand-holding-usd text-2xl text-white/80"></i>
-                <p class="text-white/80 text-sm">Total em Vales</p>
+            <div class="flex flex-col sm:flex-row gap-2">
+                <form method="GET" action="{{ route('manager.payroll.index') }}" class="flex flex-wrap items-center gap-2">
+                    <input type="month" name="month" value="{{ $month }}" aria-label="Competência" class="cw-input max-w-44" required>
+                    <select name="user_id" aria-label="Filtrar colaborador" class="cw-input max-w-64">
+                        <option value="">Todos os colaboradores</option>
+                        @foreach($team as $person)<option value="{{ $person->id }}" @selected($userId == $person->id)>{{ $person->name }}{{ !$person->active ? ' (inativo)' : '' }}</option>@endforeach
+                    </select>
+                    <input type="hidden" name="tab" value="{{ $tab }}">
+                    <button class="cw-btn-secondary" type="submit"><i class="fas fa-filter mr-2"></i>Filtrar</button>
+                </form>
+                <a href="{{ route('manager.users.create') }}" class="cw-btn-primary"><i class="fas fa-user-plus mr-2"></i>Colaborador</a>
             </div>
-            <p class="text-3xl font-bold">R$ {{ number_format($totalAdvances, 2, ',', '.') }}</p>
-        </div>
-        
-        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-lg p-5 text-white">
-            <div class="flex items-center gap-3 mb-3">
-                <i class="fas fa-money-bill-wave text-2xl text-white/80"></i>
-                <p class="text-white/80 text-sm">Total a Pagar</p>
-            </div>
-            <p class="text-3xl font-bold">R$ {{ number_format($totalToReceive, 2, ',', '.') }}</p>
         </div>
     </div>
+    @if(session('success'))<div class="cw-message" role="status"><i class="fas fa-circle-check"></i> {{ session('success') }}</div>@endif
+    @if($errors->any())<div class="cw-error" role="alert"><strong>Verifique os campos:</strong> {{ $errors->first() }}</div>@endif
 
-    {{-- Tabela de Funcionários --}}
-    <div class="bg-white rounded-2xl shadow-sm overflow-hidden">
-        <div class="px-6 py-4 border-b border-gray-100">
-            <h3 class="font-semibold text-gray-800">
-                <i class="fas fa-users text-blue-500 mr-2"></i> Cálculo de Salários
-            </h3>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead class="bg-gray-50">
-    <tr>
-        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Funcionário</th>
-        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Salário</th>
-        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Dias/Mês</th>
-        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Vales (R$)</th>
-        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Consumo (R$)</th>
-        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total Descontos</th>
-        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">A Receber</th>
-        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Ações</th>
-    </tr>
-</thead>
-<tbody class="divide-y divide-gray-100">
-    @foreach($workers as $worker)
-    <tr>
-        <td class="px-6 py-4">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-user text-blue-600"></i>
-                </div>
-                <div>
-                    <p class="font-semibold">{{ $worker->name }}</p>
-                    <p class="text-xs text-gray-400">Admitido: {{ $worker->hired_at ? $worker->hired_at->format('d/m/Y') : '-' }}</p>
-                </div>
+    <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+        @foreach([
+            ['Folha base','base','fa-wallet'],['Vales','advances','fa-hand-holding-dollar'],
+            ['Consumos','consumptions','fa-mug-hot'],['Outros custos','extras','fa-receipt'],
+            ['Líquido da folha','net','fa-money-bill-wave'],['Custo estimado','employer','fa-chart-line']
+        ] as [$label,$key,$icon])
+            <div class="cw-card p-4">
+                <div class="flex items-center gap-2 text-slate-500 text-xs"><i class="fas {{ $icon }} text-blue-500"></i>{{ $label }}</div>
+                <p class="text-xl font-bold text-slate-900 mt-3 tabular-nums">R$ {{ number_format($summary[$key],2,',','.') }}</p>
             </div>
-        </td>
-        <td class="px-6 py-4 text-right">
-            <span class="font-semibold">R$ {{ number_format($worker->monthly_salary, 2, ',', '.') }}</span>
-            @if($worker->daily_rate > 0)
-                <p class="text-xs text-gray-400">(R$ {{ number_format($worker->daily_rate, 2, ',', '.') }}/dia)</p>
-            @endif
-        </td>
-        <td class="px-6 py-4 text-right">
-            @if($worker->daily_rate > 0)
-                <span class="font-medium">{{ $worker->days_worked }} dias</span>
-            @else
-                <span class="text-gray-400">Mensal</span>
-            @endif
-        </td>
-        <td class="px-6 py-4 text-right text-red-600">
-            - R$ {{ number_format($worker->total_advances, 2, ',', '.') }}
-        </td>
-        <td class="px-6 py-4 text-right text-orange-600">
-            - R$ {{ number_format($worker->total_consumptions, 2, ',', '.') }}
-        </td>
-        <td class="px-6 py-4 text-right text-red-600 font-semibold">
-            - R$ {{ number_format($worker->total_advances + $worker->total_consumptions, 2, ',', '.') }}
-        </td>
-        <td class="px-6 py-4 text-right text-green-600 font-bold text-lg">
-            R$ {{ number_format($worker->total_to_receive, 2, ',', '.') }}
-        </td>
-        <td class="px-6 py-4 text-center">
-            <button onclick="openSalaryModal({{ $worker->id }}, '{{ $worker->name }}', {{ $worker->monthly_salary }}, {{ $worker->daily_rate }}, {{ $worker->days_worked }})" 
-                    class="text-blue-600 hover:text-blue-800">
-                <i class="fas fa-edit"></i>
-            </button>
-        </td>
-    </tr>
-    @endforeach
-</tbody>
-<tfoot class="bg-gray-50 font-bold">
-    <tr>
-        <td class="px-6 py-4">TOTAL</td>
-        <td class="px-6 py-4 text-right">R$ {{ number_format($totalSalary, 2, ',', '.') }}</td>
-        <td class="px-6 py-4 text-right">-</td>
-        <td class="px-6 py-4 text-right text-red-600">- R$ {{ number_format($totalAdvances, 2, ',', '.') }}</td>
-        <td class="px-6 py-4 text-right text-orange-600">- R$ {{ number_format($totalConsumptions, 2, ',', '.') }}</td>
-        <td class="px-6 py-4 text-right text-red-600">- R$ {{ number_format($totalAdvances + $totalConsumptions, 2, ',', '.') }}</td>
-        <td class="px-6 py-4 text-right text-green-600">R$ {{ number_format($totalToReceive, 2, ',', '.') }}</td>
-        <td class="px-6 py-4 text-center">-</td>
-    </tr>
-</tfoot>                
-            </table>
-        </div>
+        @endforeach
     </div>
+    <p class="text-xs text-slate-500">Custo estimado = folha base + despesas extras lançadas. Vales e consumos já reduzem o líquido, não são somados novamente ao custo. Encargos legais só entram se forem lançados em despesas extras.</p>
+    <nav class="cw-card flex gap-2 p-2 overflow-x-auto" aria-label="Seções financeiras">
+        <a href="{{ $tabLink('overview') }}" class="cw-tab {{ $tab==='overview' ? 'cw-tab-active' : '' }}"><i class="fas fa-users mr-2"></i>Equipe e lançamentos</a>
+        <a href="{{ $tabLink('movements') }}" class="cw-tab {{ $tab==='movements' ? 'cw-tab-active' : '' }}"><i class="fas fa-list mr-2"></i>Extrato de custos</a>
+        <a href="{{ $tabLink('history') }}" class="cw-tab {{ $tab==='history' ? 'cw-tab-active' : '' }}"><i class="fas fa-clock-rotate-left mr-2"></i>Histórico fechado</a>
+    </nav>
+
+    @if($tab==='overview')
+        <div class="grid lg:grid-cols-3 gap-4">
+            <form action="{{ route('manager.advances.store') }}" method="POST" class="cw-card p-5 space-y-3">@csrf
+                <h3 class="font-bold text-slate-900"><i class="fas fa-money-bill-transfer text-blue-600 mr-2"></i>Vale em dinheiro</h3>
+                <p class="text-xs text-slate-500">Desconto da folha do colaborador.</p>
+                <select name="user_id" required class="cw-input"><option value="">Escolha o colaborador</option>@foreach($team->where('active',true) as $person)<option value="{{ $person->id }}" @selected(old('user_id',$userId)==$person->id)>{{ $person->name }}</option>@endforeach</select>
+                <div class="grid grid-cols-2 gap-2"><input class="cw-input" name="amount" aria-label="Valor do vale" type="number" step="0.01" min="0.01" placeholder="R$ 0,00" required><input class="cw-input" name="date" aria-label="Data do vale" type="date" value="{{ $period->isCurrentMonth()?now()->toDateString():$period->toDateString() }}" required></div>
+                <input class="cw-input" name="reason" maxlength="500" placeholder="Motivo (opcional)">
+                <button class="cw-btn-primary w-full" type="submit">Registrar vale</button>
+            </form>
+            <form action="{{ route('manager.consumptions.store') }}" method="POST" class="cw-card p-5 space-y-3">@csrf
+                <h3 class="font-bold text-slate-900"><i class="fas fa-mug-hot text-blue-600 mr-2"></i>Consumo de produto</h3>
+                <p class="text-xs text-slate-500">Produto consumido descontado da folha.</p>
+                <select name="user_id" required class="cw-input"><option value="">Escolha o colaborador</option>@foreach($team->where('active',true) as $person)<option value="{{ $person->id }}" @selected(old('user_id',$userId)==$person->id)>{{ $person->name }}</option>@endforeach</select>
+                <select class="cw-input" name="product_id" required><option value="">Selecione o produto</option>@foreach($products as $product)<option value="{{ $product->id }}">{{ $product->name }} · R$ {{ number_format($product->getPriceForVehicleType('normal'),2,',','.') }}</option>@endforeach</select>
+                <div class="grid grid-cols-2 gap-2"><input class="cw-input" type="number" min="1" max="100" name="quantity" aria-label="Quantidade" value="1" required><input class="cw-input" name="date" type="date" aria-label="Data do consumo" value="{{ $period->isCurrentMonth()?now()->toDateString():$period->toDateString() }}" required></div>
+                <button class="cw-btn-primary w-full" type="submit">Registrar consumo</button>
+            </form>
+            <form action="{{ route('manager.expenses.store') }}" method="POST" class="cw-card p-5 space-y-3">@csrf
+                <h3 class="font-bold text-slate-900"><i class="fas fa-file-invoice-dollar text-blue-600 mr-2"></i>Despesa do funcionário</h3>
+                <p class="text-xs text-slate-500">Custo extra; não reduz o salário líquido.</p>
+                <select name="user_id" required class="cw-input"><option value="">Escolha o colaborador</option>@foreach($team->where('active',true) as $person)<option value="{{ $person->id }}" @selected(old('user_id',$userId)==$person->id)>{{ $person->name }}</option>@endforeach</select>
+                <select name="category" required class="cw-input"><option value="">Categoria</option>@foreach($cats as $code=>$text)<option value="{{ $code }}">{{ $text }}</option>@endforeach</select>
+                <div class="grid grid-cols-2 gap-2"><input class="cw-input" name="amount" type="number" step="0.01" min="0.01" aria-label="Valor da despesa" placeholder="R$ 0,00" required><input class="cw-input" name="date" type="date" aria-label="Data da despesa" value="{{ $period->isCurrentMonth()?now()->toDateString():$period->toDateString() }}" required></div>
+                <input class="cw-input" name="description" maxlength="500" placeholder="Descrição (opcional)">
+                <button class="cw-btn-primary w-full" type="submit">Adicionar despesa</button>
+            </form>
+        </div>
+        <section class="cw-card overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3"><div><h3 class="font-bold text-slate-900">Custos por colaborador</h3><p class="text-xs text-slate-500 mt-1">Clique em “Ver gastos” para isolar o extrato de uma pessoa.</p></div><a href="{{ route('manager.users.index') }}" class="cw-btn-secondary">Gerenciar equipe</a></div>
+            <div class="overflow-x-auto"><table class="cw-table"><thead><tr><th>Colaborador</th><th class="text-right">Salário base</th><th class="text-right">Vales</th><th class="text-right">Consumos</th><th class="text-right">Outros custos</th><th class="text-right">Líquido</th><th class="text-right">Ações</th></tr></thead>
+            <tbody>@forelse($workers as $worker)
+                <tr><td><div class="font-semibold text-slate-900">{{ $worker->name }}</div><div class="text-xs text-slate-500">{{ (float)$worker->daily_rate>0 ? $worker->days_worked.' dias × R$ '.number_format($worker->daily_rate,2,',','.') : 'Mensalista' }}</div></td>
+                <td class="text-right whitespace-nowrap">R$ {{ number_format($worker->base_amount,2,',','.') }}</td>
+                <td class="text-right whitespace-nowrap">R$ {{ number_format($worker->money_advances,2,',','.') }}</td>
+                <td class="text-right whitespace-nowrap">R$ {{ number_format($worker->product_consumptions,2,',','.') }}</td>
+                <td class="text-right whitespace-nowrap">R$ {{ number_format($worker->extra_costs,2,',','.') }}</td>
+                <td class="text-right whitespace-nowrap font-bold text-slate-900">R$ {{ number_format($worker->net_amount,2,',','.') }}</td>
+                <td class="text-right whitespace-nowrap"><a class="text-sm font-semibold text-blue-600 hover:underline mr-3" href="{{ route('manager.payroll.index',['month'=>$month,'user_id'=>$worker->id,'tab'=>'movements']) }}">Ver gastos</a><a class="text-sm font-semibold text-slate-600 hover:underline" href="{{ route('manager.users.edit',$worker) }}">Editar cadastro</a></td></tr>
+            @empty<tr><td colspan="7" class="text-center text-slate-500 py-10">Nenhum colaborador para o filtro escolhido.</td></tr>@endforelse</tbody></table></div>
+        </section>
+        <div class="cw-card p-5 flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
+            <div><h3 class="font-semibold text-slate-900">Fechamento mensal</h3><p class="text-xs text-slate-500 mt-1">Registra os valores atuais da folha. Revise a competência antes de confirmar.</p></div>
+            <form method="POST" action="{{ route('manager.payroll.close-period') }}" onsubmit="return confirm('Fechar a competência? Um novo fechamento atualiza o histórico desse mês.')">@csrf<input type="hidden" name="month" value="{{ $month }}"><button class="cw-btn-primary"><i class="fas fa-lock mr-2"></i>{{ $closedForPeriod ? 'Atualizar fechamento' : 'Fechar competência' }}</button></form>
+        </div>
+    @elseif($tab==='movements')
+        <section class="cw-card overflow-hidden"><div class="p-5 border-b border-slate-100"><h3 class="font-bold text-slate-900">Vales e consumos {{ $employee ? 'de '.$employee->name : '' }}</h3><p class="text-xs text-slate-500 mt-1">Lançamentos que reduzem o valor líquido da folha.</p></div>
+        <div class="overflow-x-auto"><table class="cw-table"><thead><tr><th>Data</th><th>Funcionário</th><th>Categoria</th><th>Detalhe</th><th class="text-right">Valor</th><th class="text-right">Ação</th></tr></thead><tbody>
+        @forelse($transactions as $t)<tr><td>{{ $t->date->format('d/m/Y') }}</td><td>{{ $t->user?->name }}</td><td>{{ $t->type === 'product' ? 'Consumo' : 'Vale' }}</td><td>{{ $t->type === 'product' ? ($t->product?->name ?? 'Produto').' × '.$t->quantity : ($t->reason ?: 'Adiantamento') }}</td><td class="text-right font-semibold">R$ {{ number_format($t->amount,2,',','.') }}</td><td class="text-right"><form method="POST" action="{{ $t->type === 'product' ? route('manager.consumptions.destroy',$t) : route('manager.advances.destroy',$t) }}" onsubmit="return confirm('Excluir lançamento?')">@csrf @method('DELETE')<button class="cw-action-danger" aria-label="Remover lançamento"><i class="fas fa-trash"></i></button></form></td></tr>
+        @empty<tr><td colspan="6" class="text-center py-8 text-slate-500">Nenhum vale ou consumo nesta competência.</td></tr>@endforelse
+        </tbody></table></div><div class="p-4">{{ $transactions->links() }}</div></section>
+        <section class="cw-card overflow-hidden"><div class="p-5 border-b border-slate-100"><h3 class="font-bold text-slate-900">Despesas extras {{ $employee ? 'de '.$employee->name : '' }}</h3><p class="text-xs text-slate-500 mt-1">Benefícios, transporte, alimentação, encargos e demais custos por colaborador.</p></div>
+        <div class="overflow-x-auto"><table class="cw-table"><thead><tr><th>Data</th><th>Funcionário</th><th>Categoria</th><th>Descrição</th><th class="text-right">Valor</th><th class="text-right">Ação</th></tr></thead><tbody>
+        @forelse($expenses as $e)<tr><td>{{ $e->date->format('d/m/Y') }}</td><td>{{ $e->user?->name }}</td><td>{{ $cats[$e->category] ?? $e->category }}</td><td>{{ $e->description ?: 'Sem observação' }}</td><td class="text-right font-semibold">R$ {{ number_format($e->amount,2,',','.') }}</td><td class="text-right"><form method="POST" action="{{ route('manager.expenses.destroy',$e) }}" onsubmit="return confirm('Excluir despesa?')">@csrf @method('DELETE')<button class="cw-action-danger" aria-label="Remover despesa"><i class="fas fa-trash"></i></button></form></td></tr>
+        @empty<tr><td colspan="6" class="text-center py-8 text-slate-500">Nenhuma despesa extra nesta competência.</td></tr>@endforelse
+        </tbody></table></div><div class="p-4">{{ $expenses->links() }}</div></section>
+    @else
+        <section class="cw-card overflow-hidden"><div class="p-5 border-b border-slate-100"><h3 class="font-bold text-slate-900">Histórico de folhas fechadas</h3><p class="text-xs text-slate-500">Carregado somente ao abrir esta seção.</p></div><div class="overflow-x-auto"><table class="cw-table"><thead><tr><th>Competência</th><th>Colaborador</th><th class="text-right">Base</th><th class="text-right">Vales</th><th class="text-right">Consumos</th><th class="text-right">Líquido</th><th class="text-right">Outros custos</th><th class="text-right">Custo da empresa</th><th>Fechado em</th></tr></thead><tbody>
+        @forelse($history as $h)<tr><td>{{ $h->period?->format('m/Y') }}</td><td>{{ $h->user?->name }}</td><td class="text-right">R$ {{ number_format($h->base_amount,2,',','.') }}</td><td class="text-right">R$ {{ number_format($h->advances_amount,2,',','.') }}</td><td class="text-right">R$ {{ number_format($h->consumptions_amount,2,',','.') }}</td><td class="text-right font-semibold">R$ {{ number_format($h->net_amount,2,',','.') }}</td><td class="text-right">R$ {{ number_format($h->extra_costs_amount,2,',','.') }}</td><td class="text-right">{{ $h->employer_cost_amount > 0 ? 'R$ '.number_format($h->employer_cost_amount,2,',','.') : '—' }}</td><td>{{ $h->closed_at?->format('d/m/Y') }}</td></tr>
+        @empty<tr><td colspan="9" class="text-center py-10 text-slate-500">Sem fechamento registrado.</td></tr>@endforelse
+        </tbody></table></div><div class="p-4">{{ $history->links() }}</div></section>
+    @endif
 </div>
-
-{{-- Modal Editar Salário --}}
-<div id="salaryModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-xl bg-white">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-bold text-gray-800">Editar Salário</h3>
-            <button onclick="closeSalaryModal()" class="text-gray-400 hover:text-gray-600">&times;</button>
-        </div>
-        <form id="salaryForm" method="POST">
-            @csrf
-            @method('PUT')
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Salário Mensal</label>
-                    <input type="number" name="monthly_salary" id="monthly_salary" step="0.01" class="w-full border rounded-lg px-3 py-2">
-                    <p class="text-xs text-gray-400 mt-1">Deixe 0 se for diarista</p>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Valor por Dia (Diarista)</label>
-                    <input type="number" name="daily_rate" id="daily_rate" step="0.01" class="w-full border rounded-lg px-3 py-2">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Dias Trabalhados no Mês</label>
-                    <input type="number" name="days_worked" id="days_worked" min="0" max="31" class="w-full border rounded-lg px-3 py-2">
-                </div>
-                <div class="flex justify-end gap-3 pt-3">
-                    <button type="button" onclick="closeSalaryModal()" class="px-4 py-2 border rounded-lg hover:bg-gray-50">Cancelar</button>
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Salvar</button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script>
-    function openSalaryModal(id, name, monthlySalary, dailyRate, daysWorked) {
-        document.getElementById('salaryForm').action = `/manager/payroll/${id}`;
-        document.getElementById('monthly_salary').value = monthlySalary;
-        document.getElementById('daily_rate').value = dailyRate;
-        document.getElementById('days_worked').value = daysWorked;
-        document.getElementById('salaryModal').classList.remove('hidden');
-    }
-
-    function closeSalaryModal() {
-        document.getElementById('salaryModal').classList.add('hidden');
-    }
-</script>
 @endsection

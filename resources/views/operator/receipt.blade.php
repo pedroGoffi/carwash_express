@@ -178,21 +178,21 @@
         </div>
 
         <!-- SERVICO PRINCIPAL -->
-        @php $primeiro = $order->products->first(); @endphp
+        @php $primeiro = $order->products->first(fn ($item) => $item->type?->value === 'wash') ?? $order->products->first(); @endphp
         <div class="main-service">
-            <div class="main-service-name">{{ strtoupper($primeiro->name) }}</div>
+            <div class="main-service-name">{{ strtoupper($primeiro?->name ?? 'SERVIÇO') }}</div>
             <h5>R$</h5>
-            <div class="main-service-price">{{ number_format($primeiro->pivot->unit_price, 2, ',', '.') }}</div>
+            <div class="main-service-price">{{ number_format($primeiro?->pivot?->total_price ?? 0, 2, ',', '.') }}</div>
         </div>
 
         <!-- DEMAIS SERVICOS - 2 POR LINHA -->
         @if($order->products->count() > 1)
         <div class="services-grid">
             @foreach($order->products as $index => $item)
-                @if($index > 0)
+                @if($primeiro && $item->id !== $primeiro->id)
                 <div class="service-item">
-                    <div class="service-name" title="{{ $item->name }}">{{ substr($item->name, 0, 12) }}</div>
-                    <div class="service-price">R$ {{ number_format($item->pivot->unit_price, 2, ',', '.') }}</div>
+                    <div class="service-name" title="{{ $item->name }}">{{ $item->pivot->quantity }}× {{ substr($item->name, 0, 12) }}</div>
+                    <div class="service-price">R$ {{ number_format($item->pivot->total_price, 2, ',', '.') }}</div>
                 </div>
                 @endif
             @endforeach

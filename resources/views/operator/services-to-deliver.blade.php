@@ -9,14 +9,14 @@
     
     {{-- Serviços Finalizados Aguardando Entrega --}}
     <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-        <div class="bg-gradient-to-r from-purple-600 to-purple-700 px-6 py-4">
+        <div class="bg-white border-b border-slate-100 px-6 py-4">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                    <i class="fas fa-key text-white text-lg"></i>
+                <div class="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center">
+                    <i class="fas fa-key text-blue-600 text-lg"></i>
                 </div>
                 <div>
-                    <h2 class="text-white font-semibold">Serviços Finalizados</h2>
-                    <p class="text-purple-100 text-sm">Aguardando devolução das chaves</p>
+                    <h2 class="text-slate-900 font-semibold">Serviços Finalizados</h2>
+                    <p class="text-slate-500 text-sm">Aguardando devolução das chaves</p>
                 </div>
             </div>
         </div>
@@ -65,7 +65,7 @@
                                 <div class="flex flex-wrap gap-1 mt-2">
                                     @foreach($order->products as $item)
                                         <span class="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
-                                            {{ $item->name }}
+                                            @if($item->pivot->quantity > 1){{ $item->pivot->quantity }}× @endif{{ $item->name }}
                                         </span>
                                     @endforeach
                                 </div>
@@ -88,7 +88,7 @@
                 
                 <div class="mt-6 pt-4 border-t text-center">
                     <p class="text-sm text-gray-500">
-                        Total: <span class="font-bold">{{ $finishedOrders->count() }}</span> serviço(s) aguardando entrega
+                        Total: <span class="font-bold">{{ $finishedOrders->total() }}</span> serviço(s) aguardando entrega
                     </p>
                 </div>
             @else
@@ -100,6 +100,7 @@
                     <p class="text-gray-400">Todos os serviços finalizados já foram entregues</p>
                 </div>
             @endif
+        <div class="px-5 pb-5">{{ $finishedOrders->links() }}</div>
         </div>
     </div>
 </div>

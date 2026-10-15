@@ -9,26 +9,26 @@
     
     {{-- Cards de Resumo --}}
     <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg p-5 text-white">
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 text-slate-900">
             <div class="flex items-center gap-3 mb-3">
-                <i class="fas fa-coffee text-2xl text-white/80"></i>
-                <p class="text-white/80 text-sm">Total Consumido</p>
+                <i class="fas fa-coffee text-2xl text-slate-500"></i>
+                <p class="text-slate-500 text-sm">Total Consumido</p>
             </div>
             <p class="text-3xl font-bold">R$ {{ number_format($consumptions->sum('amount'), 2, ',', '.') }}</p>
         </div>
         
-        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl shadow-lg p-5 text-white">
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 text-slate-900">
             <div class="flex items-center gap-3 mb-3">
-                <i class="fas fa-bottle-water text-2xl text-white/80"></i>
-                <p class="text-white/80 text-sm">Itens Consumidos</p>
+                <i class="fas fa-bottle-water text-2xl text-slate-500"></i>
+                <p class="text-slate-500 text-sm">Itens Consumidos</p>
             </div>
             <p class="text-3xl font-bold">{{ $consumptions->sum('quantity') }} unidades</p>
         </div>
         
-        <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg p-5 text-white">
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 text-slate-900">
             <div class="flex items-center gap-3 mb-3">
-                <i class="fas fa-users text-2xl text-white/80"></i>
-                <p class="text-white/80 text-sm">Funcionários</p>
+                <i class="fas fa-users text-2xl text-slate-500"></i>
+                <p class="text-slate-500 text-sm">Funcionários</p>
             </div>
             <p class="text-3xl font-bold">{{ $workers->count() }}</p>
         </div>

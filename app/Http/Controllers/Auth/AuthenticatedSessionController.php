@@ -33,7 +33,7 @@ class AuthenticatedSessionController extends Controller
                 return redirect()->route('operator.orders.create');
             }
             
-            return redirect('/');
+            abort(403, 'Perfil de usuário sem painel configurado.');
         }
 
         return back()->withErrors(['name' => 'Credenciais inválidas.']);

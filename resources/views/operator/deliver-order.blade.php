@@ -9,14 +9,14 @@
     <div class="bg-white rounded-xl shadow-lg overflow-hidden">
         
         {{-- Header --}}
-        <div class="bg-gradient-to-r from-green-600 to-green-700 px-6 py-5">
+        <div class="bg-white border-b border-slate-100 px-6 py-5">
             <div class="flex items-center gap-3">
-                <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                    <i class="fas fa-key text-white text-2xl"></i>
+                <div class="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center">
+                    <i class="fas fa-key text-blue-600 text-2xl"></i>
                 </div>
                 <div>
-                    <h2 class="text-white text-xl font-bold">Devolução do Veículo</h2>
-                    <p class="text-green-100 text-sm">Confirme os dados e entregue as chaves ao cliente</p>
+                    <h2 class="text-slate-900 text-xl font-bold">Devolução do Veículo</h2>
+                    <p class="text-slate-500 text-sm">Confirme os dados e entregue as chaves ao cliente</p>
                 </div>
             </div>
         </div>
@@ -111,7 +111,7 @@
                         <div class="flex flex-wrap gap-1 mt-1">
                             @foreach($order->products as $item)
                                 <span class="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-                                    {{ $item->name }}
+                                    @if($item->pivot->quantity > 1){{ $item->pivot->quantity }}× @endif{{ $item->name }}
                                 </span>
                             @endforeach
                         </div>
@@ -135,7 +135,7 @@
                         <div class="space-y-1 mt-1">
                             @foreach($order->payments as $payment)
                                 <div class="flex items-center gap-2">
-                                    <i class="fas {{ $payment->method == 'Dinheiro' ? 'fa-money-bill-wave' : ($payment->method == 'Pix' ? 'fa-qrcode' : 'fa-credit-card') }} text-gray-500 text-sm"></i>
+                                    <i class="fas {{ $payment->method == 'cash' ? 'fa-money-bill-wave' : ($payment->method == 'pix' ? 'fa-qrcode' : 'fa-credit-card') }} text-gray-500 text-sm"></i>
                                     <span class="text-sm">{{ $payment->method }}: R$ {{ number_format($payment->amount, 2, ',', '.') }}</span>
                                 </div>
                             @endforeach
@@ -159,6 +159,33 @@
                     </div>
                 </div>
             </div>
+
+            @php
+                $totalPaid = (float) $order->payments->sum('amount');
+                $remainingPayment = max(0, (float) $order->total - $totalPaid);
+            @endphp
+            @if($remainingPayment > 0)
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-5">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <p class="font-bold text-amber-900">Pagamento pendente</p>
+                        <p class="text-sm text-amber-700 mt-1">Saldo: R$ {{ number_format($remainingPayment, 2, ',', '.') }}</p>
+                    </div>
+                    <form method="POST" action="{{ route('operator.orders.payments.store', $order) }}" class="flex flex-col sm:flex-row gap-2">
+                        @csrf
+                        <select name="method" required class="rounded-lg border-amber-200 bg-white">
+                            <option value="">Forma</option>
+                            <option value="cash">Dinheiro</option>
+                            <option value="pix">Pix</option>
+                            <option value="credit">Crédito</option>
+                            <option value="debit">Débito</option>
+                        </select>
+                        <input type="number" name="amount" min="0.01" max="{{ $remainingPayment }}" step="0.01" value="{{ number_format($remainingPayment, 2, '.', '') }}" required class="rounded-lg border-amber-200 w-36">
+                        <button class="rounded-lg bg-amber-500 text-white px-4 py-2 font-semibold hover:bg-amber-600">Registrar</button>
+                    </form>
+                </div>
+            </div>
+            @endif
 
             {{-- Checklist de Verificação --}}
             <div class="bg-gray-50 rounded-xl p-5">
@@ -232,19 +259,14 @@
     function confirmDelivery() {
         if (!deliverBtn.disabled) {
             if (confirm('Tem certeza que deseja finalizar a entrega?\n\nConfirme se:\n✓ Chaves foram devolvidas\n✓ Cliente aprovou o serviço\n✓ Pagamento foi confirmado\n✓ Comprovante foi entregue')) {
-                fetch('{{ route("operator.orders.deliver", $order) }}', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'Content-Type': 'application/json'
-                    }
-                }).then(response => {
-                    if (response.redirected) {
-                        window.location.href = response.url;
-                    } else {
-                        window.location.href = '{{ route("operator.orders.create") }}';
-                    }
-                });
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = @json(route('operator.orders.deliver', $order));
+                const csrf = document.createElement('input');
+                csrf.type = 'hidden'; csrf.name = '_token'; csrf.value = document.querySelector('meta[name="csrf-token"]').content;
+                form.appendChild(csrf);
+                document.body.appendChild(form);
+                form.submit();
             }
         }
     }

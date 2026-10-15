@@ -1,0 +1,109 @@
+<?php $__env->startSection('title', 'Serviços para Entregar'); ?>
+<?php $__env->startSection('header', 'Entregar Veículos'); ?>
+<?php $__env->startSection('subheader', 'Selecione o serviço finalizado para devolver as chaves ao cliente'); ?>
+
+<?php $__env->startSection('content'); ?>
+<div class="space-y-6">
+    
+    
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div class="bg-white border-b border-slate-100 px-6 py-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center">
+                    <i class="fas fa-key text-blue-600 text-lg"></i>
+                </div>
+                <div>
+                    <h2 class="text-slate-900 font-semibold">Serviços Finalizados</h2>
+                    <p class="text-slate-500 text-sm">Aguardando devolução das chaves</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-6">
+            <?php if($finishedOrders->count() > 0): ?>
+                <div class="grid grid-cols-1 gap-4">
+                    <?php $__currentLoopData = $finishedOrders; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $order): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <div class="border-2 border-gray-200 rounded-xl p-5 hover:border-purple-300 hover:shadow-lg transition-all">
+                        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            
+                            
+                            <div class="flex-1">
+                                <div class="flex items-center gap-3 mb-2">
+                                    <span class="font-mono text-lg font-bold text-purple-600">#<?php echo e($order->code); ?></span>
+                                    <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
+                                        <i class="fas fa-check-circle mr-1"></i> Finalizado
+                                    </span>
+                                </div>
+                                
+                                
+                                <div class="flex items-center gap-2 text-gray-600 mb-1">
+                                    <i class="fas fa-user text-gray-400 w-4"></i>
+                                    <span class="text-sm">
+                                        <?php if($order->customer_type == 'pj'): ?>
+                                            <?php echo e($order->customer_name); ?> (<?php echo e($order->customer_document); ?>)
+                                        <?php else: ?>
+                                            <?php echo e($order->customer_name ?? 'Cliente não identificado'); ?>
+
+                                        <?php endif; ?>
+                                    </span>
+                                </div>
+                                
+                                
+                                <div class="flex items-center gap-2 text-gray-600">
+                                    <i class="fas fa-car text-gray-400 w-4"></i>
+                                    <span class="text-sm uppercase font-mono"><?php echo e($order->license_plate); ?></span>
+                                    <span class="text-xs text-gray-400">
+                                        <?php if($order->vehicle_type == 'normal'): ?> Carro
+                                        <?php elseif($order->vehicle_type == 'suv'): ?> SUV
+                                        <?php else: ?> Caminhonete
+                                        <?php endif; ?>
+                                    </span>
+                                </div>
+                                
+                                
+                                <div class="flex flex-wrap gap-1 mt-2">
+                                    <?php $__currentLoopData = $order->products; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                        <span class="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
+                                            <?php if($item->pivot->quantity > 1): ?><?php echo e($item->pivot->quantity); ?>× <?php endif; ?><?php echo e($item->name); ?>
+
+                                        </span>
+                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                </div>
+                            </div>
+                            
+                            
+                            <div class="text-right">
+                                <div class="text-2xl font-bold text-green-600 mb-2">
+                                    R$ <?php echo e(number_format($order->total, 2, ',', '.')); ?>
+
+                                </div>
+                                <a href="<?php echo e(route('operator.orders.deliver-form', $order)); ?>" 
+                                   class="inline-flex items-center gap-2 px-5 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium">
+                                    <i class="fas fa-key"></i> Entregar Veículo
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                </div>
+                
+                <div class="mt-6 pt-4 border-t text-center">
+                    <p class="text-sm text-gray-500">
+                        Total: <span class="font-bold"><?php echo e($finishedOrders->total()); ?></span> serviço(s) aguardando entrega
+                    </p>
+                </div>
+            <?php else: ?>
+                <div class="text-center py-12">
+                    <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-check-circle text-gray-400 text-3xl"></i>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-700 mb-1">Nenhum serviço pendente</h3>
+                    <p class="text-gray-400">Todos os serviços finalizados já foram entregues</p>
+                </div>
+            <?php endif; ?>
+        <div class="px-5 pb-5"><?php echo e($finishedOrders->links()); ?></div>
+        </div>
+    </div>
+</div>
+<?php $__env->stopSection(); ?>
+<?php echo $__env->make('layouts.app', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH /home/pedro/Desktop/MerchOnline/carwash/carwash_express/resources/views/operator/services-to-deliver.blade.php ENDPATH**/ ?>

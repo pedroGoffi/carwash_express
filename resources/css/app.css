@@ -1,3 +1,45 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    :root { color-scheme: light; }
+    html { background-color: #f7f9fc; }
+    body { background-color: #f7f9fc; -webkit-font-smoothing: antialiased; }
+    a, button, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+    button, a { touch-action: manipulation; }
+    input, select, textarea { background-color: white; }
+    :focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+}
+
+@layer components {
+    .cw-card { @apply rounded-2xl bg-white border border-slate-200 shadow-sm; }
+    .cw-field { @apply flex flex-col gap-1.5 text-sm font-semibold text-slate-700; }
+    .cw-input { @apply block w-full rounded-xl border-slate-200 bg-white text-slate-800 text-sm placeholder:text-slate-400 focus:border-blue-500 focus:ring-blue-500; min-height: 43px; }
+    .cw-btn-primary { @apply inline-flex items-center justify-center gap-1 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2; min-height: 43px; }
+    .cw-btn-secondary { @apply inline-flex items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 hover:border-blue-300 transition-colors; min-height: 43px; }
+    .cw-eyebrow { @apply text-xs uppercase tracking-wide font-bold text-slate-500; }
+    .cw-tab { @apply inline-flex items-center px-4 py-2.5 rounded-xl whitespace-nowrap font-semibold text-sm text-slate-600 hover:bg-slate-50 transition-colors; }
+    .cw-tab-active { @apply bg-blue-50 text-blue-700 hover:bg-blue-50; }
+    .cw-table { @apply min-w-full divide-y divide-slate-100 text-sm; }
+    .cw-table thead { @apply bg-slate-50; }
+    .cw-table th { @apply px-4 py-3 text-left text-xs uppercase tracking-wide text-slate-500 font-semibold whitespace-nowrap; }
+    .cw-table td { @apply px-4 py-3 text-slate-700 align-middle; }
+    .cw-table tbody { @apply divide-y divide-slate-100; }
+    .cw-table tbody tr { @apply hover:bg-slate-50/70 transition-colors; }
+    .cw-link { @apply text-blue-600 font-semibold text-sm hover:underline; }
+    .cw-action-danger { @apply p-2 rounded-lg text-rose-600 hover:bg-rose-50 transition-colors; }
+    .cw-message { @apply rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-800 flex items-center gap-2 text-sm; }
+    .cw-error { @apply rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-rose-800 text-sm; }
+    .cw-pill { @apply inline-flex rounded-full px-2.5 py-1 text-xs font-semibold; }
+    .cw-pill-success { @apply bg-emerald-50 text-emerald-700; }
+    .cw-pill-muted { @apply bg-slate-100 text-slate-600; }
+}
+
+/* Reforça superfícies claras, sem alterar botões de ação. */
+.cw-progress { position: fixed; left: 0; top: 0; height: 3px; width: 0; z-index: 9999;
+    background: #2563eb; opacity: 0; transition: width .25s ease, opacity .16s ease; pointer-events:none; }
+.cw-progress.is-loading { width: 72%; opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+}

@@ -24,6 +24,7 @@ class User extends Authenticatable
         'total_to_receive',  // Valor a receber (salário - vales)
         'active',
         'hired_at',
+        'phone', 'email_contact', 'document', 'job_title', 'employment_type', 'pix_key', 'staff_notes',
     ];
 
     protected $hidden = [
@@ -42,7 +43,7 @@ class User extends Authenticatable
             'total_advances' => 'decimal:2',
             'total_to_receive' => 'decimal:2',
             'active' => 'boolean',
-            'hired_at' => 'datetime',
+            'hired_at' => 'date',
         ];
     }
 
@@ -54,6 +55,14 @@ class User extends Authenticatable
     public function advances()
     {
         return $this->hasMany(Advance::class);
+    }
+
+
+    public function employeeExpenses() { return $this->hasMany(EmployeeExpense::class); }
+
+    public function payrollHistories()
+    {
+        return $this->hasMany(PayrollHistory::class);
     }
 
     public function isAdmin(): bool
