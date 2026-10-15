@@ -19,12 +19,7 @@ services:
       APP_OPTIMIZE: "true"
     ports:
       - "8080:80"
-    healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1/health"]
-      interval: 10s
-      timeout: 3s
-      retries: 6
-      start_period: 15s
+    
     networks:
       - carwash
 
