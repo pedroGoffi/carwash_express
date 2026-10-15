@@ -1,3 +1,4 @@
+
 services:
   web:
     build:
@@ -5,83 +6,120 @@ services:
       dockerfile: Dockerfile
     image: carwash-express:latest
     restart: unless-stopped
+
     env_file:
       - .env
+
     environment:
       REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_TIMEOUT: 0.35
-      REDIS_READ_TIMEOUT: 0.35
-      REDIS_MAX_RETRIES: 1
+      REDIS_PORT: "6379"
+      REDIS_TIMEOUT: "0.35"
+      REDIS_READ_TIMEOUT: "0.35"
+      REDIS_MAX_RETRIES: "1"
       SESSION_DRIVER: file
       CACHE_STORE: failover
       QUEUE_CONNECTION: redis
       APP_OPTIMIZE: "true"
+
     ports:
-      - "8080:80"
-    
+      - "127.0.0.1:8080:80"
+
+    depends_on:
+      redis:
+        condition: service_healthy
+
     networks:
       - carwash
 
   queue:
     image: carwash-express:latest
     restart: unless-stopped
+
     env_file:
       - .env
+
     environment:
       REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_TIMEOUT: 0.35
-      REDIS_READ_TIMEOUT: 0.35
-      REDIS_MAX_RETRIES: 1
+      REDIS_PORT: "6379"
+      REDIS_TIMEOUT: "0.35"
+      REDIS_READ_TIMEOUT: "0.35"
+      REDIS_MAX_RETRIES: "1"
       SESSION_DRIVER: file
       CACHE_STORE: failover
       QUEUE_CONNECTION: redis
       APP_OPTIMIZE: "false"
-    command: ["php", "artisan", "queue:work", "redis", "--sleep=1", "--tries=3", "--timeout=90", "--max-time=3600"]
+
+    command:
+      - php
+      - artisan
+      - queue:work
+      - redis
+      - --sleep=1
+      - --tries=3
+      - --timeout=90
+      - --max-time=3600
+
     depends_on:
-      web:
-        condition: service_healthy
       redis:
         condition: service_healthy
+
     networks:
       - carwash
 
   scheduler:
     image: carwash-express:latest
     restart: unless-stopped
+
     env_file:
       - .env
+
     environment:
       REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_TIMEOUT: 0.35
-      REDIS_READ_TIMEOUT: 0.35
-      REDIS_MAX_RETRIES: 1
+      REDIS_PORT: "6379"
+      REDIS_TIMEOUT: "0.35"
+      REDIS_READ_TIMEOUT: "0.35"
+      REDIS_MAX_RETRIES: "1"
       SESSION_DRIVER: file
       CACHE_STORE: failover
       QUEUE_CONNECTION: redis
       APP_OPTIMIZE: "false"
-    command: ["php", "artisan", "schedule:work"]
+
+    command:
+      - php
+      - artisan
+      - schedule:work
+
     depends_on:
-      web:
-        condition: service_healthy
       redis:
         condition: service_healthy
+
     networks:
       - carwash
 
   redis:
     image: redis:7.4-alpine
     restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes", "--maxmemory-policy", "allkeys-lru"]
+
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --maxmemory-policy
+      - allkeys-lru
+
     volumes:
       - redis_data:/data
+
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test:
+        - CMD
+        - redis-cli
+        - ping
       interval: 5s
       timeout: 3s
       retries: 10
+      start_period: 5s
+
     networks:
       - carwash
 
