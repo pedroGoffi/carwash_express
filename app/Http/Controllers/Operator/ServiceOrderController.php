@@ -10,6 +10,7 @@ use App\Models\Note;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\ServiceOrder;
+use App\Services\Operator\TodayOrderSummaryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -50,10 +51,31 @@ class ServiceOrderController extends Controller
     {
         $companyId = auth()->user()->company_id;
         $base = Product::where('company_id', $companyId)->where('active', true)->with('prices:id,product_id,vehicle_type,price');
-        $washes = (clone $base)->where('type', 'wash')->orderBy('name')->get();
+        $washes = (clone $base)->where('type', 'wash')->orderBy('name')->get()
+            ->filter(fn (Product $wash) => collect(['normal', 'suv', 'pickup'])
+                ->contains(fn (string $vehicle) => $wash->getPriceForVehicleType($vehicle) > 0))
+            ->values();
         $products = (clone $base)->whereIn('type', ['drink', 'snack', 'other'])->orderBy('type')->orderBy('name')->get();
 
-        return view('operator.create-order', compact('washes', 'products'));
+        $todaySummary = app(TodayOrderSummaryService::class)->forCompany((int) $companyId);
+
+        return view('operator.create-order', compact('washes', 'products', 'todaySummary'));
+    }
+
+    public function dailySummary(Request $request, TodayOrderSummaryService $summary)
+    {
+        $data = $request->validate(['date' => ['nullable', 'date_format:Y-m-d']]);
+        $date = $data['date'] ?? now()->toDateString();
+        return view('operator.daily-summary', [
+            'summary' => $summary->forCompany((int) auth()->user()->company_id, $date),
+            'date' => $date,
+        ]);
+    }
+
+    public function todaySummary(Request $request, TodayOrderSummaryService $summary)
+    {
+        $data = $request->validate(['date' => ['nullable', 'date_format:Y-m-d']]);
+        return response()->json($summary->forCompany((int) auth()->user()->company_id, $data['date'] ?? null));
     }
 
     public function store(Request $request)
@@ -69,6 +91,7 @@ class ServiceOrderController extends Controller
             'initial_status' => ['required', Rule::in([ServiceOrderStatus::WAITING->value, ServiceOrderStatus::FINISHED->value])],
             'items' => 'required|array|min:1|max:150',
             'items.*' => 'required|integer|min:1|max:100',
+            'primary_wash_id' => 'required|integer|min:1',
             'payments' => 'nullable|string',
         ]);
 
@@ -93,16 +116,19 @@ class ServiceOrderController extends Controller
         if ($products->count() !== count($quantities)) {
             throw ValidationException::withMessages(['items' => 'Um ou mais produtos não estão disponíveis nesta empresa.']);
         }
-        $washCount = 0;
+        $primaryWashId = (int) $validated['primary_wash_id'];
+        $primaryWashCount = 0;
         $pivot = [];
         $totalCents = 0;
         foreach ($quantities as $id => $qty) {
             $product = $products[$id];
             if ($product->type === ProductType::WASH) {
-                $washCount++;
                 if ($qty !== 1) {
-                    throw ValidationException::withMessages(['items' => 'A lavagem deve ter quantidade 1.']);
+                    throw ValidationException::withMessages(['items' => 'Cada serviço de lavagem deve ter quantidade 1.']);
                 }
+                if ($id === $primaryWashId) $primaryWashCount++;
+            } else if ($id === $primaryWashId) {
+                throw ValidationException::withMessages(['primary_wash_id' => 'O serviço principal deve ser uma lavagem.']);
             }
             $unitCents = (int) round($product->getPriceForVehicleType($validated['vehicle_type']) * 100);
             if ($unitCents <= 0) {
@@ -114,10 +140,11 @@ class ServiceOrderController extends Controller
                 'quantity' => $qty,
                 'unit_price' => $unitCents / 100,
                 'total_price' => $lineCents / 100,
+                'is_primary_wash' => $id === $primaryWashId,
             ];
         }
-        if ($washCount !== 1) {
-            throw ValidationException::withMessages(['items' => 'Selecione uma única lavagem para a ordem.']);
+        if ($primaryWashCount !== 1) {
+            throw ValidationException::withMessages(['primary_wash_id' => 'Selecione uma lavagem principal válida da empresa.']);
         }
 
         $rawPayments = json_decode($validated['payments'] ?? '[]', true);

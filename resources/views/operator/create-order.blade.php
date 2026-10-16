@@ -10,6 +10,7 @@
     $customerType = old('customer_type', 'pf');
     $vehicleType = old('vehicle_type', 'normal');
     $initialStatus = old('initial_status', 'finished');
+    $primaryWashId = old('primary_wash_id');
     $catalog = $washes->concat($products)->mapWithKeys(fn ($p) => [$p->id => [
         'name' => $p->name,
         'type' => $p->type->value,
@@ -55,6 +56,16 @@
     .erp-order .erp-save:disabled { opacity:.55; cursor:not-allowed; }
     .erp-order .erp-filter[aria-pressed="true"] { background:#dbeafe; color:#1d4ed8; border-color:#93c5fd; }
     .erp-order .erp-invalid { border-color:#ef4444 !important; }
+    .erp-order .erp-kpi { padding:16px; border:1px solid #e5eaf1; border-radius:14px; background:white; min-width:0; }
+    .erp-order .erp-kpi-label { color:#64748b; font-size:12px; font-weight:700; }
+    .erp-order .erp-kpi-value { color:#0f172a; font-size:24px; font-weight:800; letter-spacing:-.035em; font-variant-numeric:tabular-nums; }
+    .erp-order .erp-detail-list { display:grid; gap:9px; }
+    .erp-order .erp-detail-line { display:flex; justify-content:space-between; gap:12px; font-size:12px; color:#475569; }
+    .erp-order .erp-detail-line strong { font-variant-numeric:tabular-nums; font-weight:800; color:#17253b; text-align:right; }
+    .erp-order .erp-wash-addon { border:1px solid #e2e8f0; border-radius:11px; padding:12px; background:#fff; text-align:left; min-width:0; }
+    .erp-order .erp-wash-addon[aria-pressed="true"] { background:#eff6ff; border-color:#60a5fa; }
+    .erp-order .erp-wash-addon:disabled { background:#f8fafc; color:#94a3b8; cursor:not-allowed; opacity:.6; }
+    .erp-order .erp-wash-addon:focus-visible { outline:3px solid #bfdbfe; outline-offset:2px; }
     @media(max-width:640px) { .erp-order .erp-panel-head { padding:15px; } .erp-order .erp-product { padding:11px; } .erp-order .erp-payment-row { grid-template-columns:1fr minmax(83px,110px) 30px; } }
     @media(prefers-reduced-motion:reduce) { .erp-order * { transition:none!important; scroll-behavior:auto!important; } }
 </style>
@@ -68,6 +79,109 @@
         </div>
         <a href="{{ route('operator.orders.index') }}" class="erp-small-button inline-flex items-center gap-2"><i class="fas fa-list"></i> Consultar ordens</a>
     </div>
+
+    {{-- Resumo operacional do dia: valores do banco, exclusivos da empresa autenticada. --}}
+    <section class="mb-5" aria-labelledby="daily-summary-title" id="today-summary"
+             data-summary-url="{{ route('operator.orders.today-summary') }}">
+        <div class="flex flex-wrap items-end justify-between gap-2 mb-3">
+            <div>
+                <h3 class="text-sm font-extrabold text-slate-900" id="daily-summary-title">Resumo da operação de hoje</h3>
+                <p class="text-xs text-slate-500">{{ $todaySummary['date'] }} · números da sua empresa · atualiza automaticamente</p>
+            </div>
+            <a href="{{ route('operator.daily-summary') }}" class="erp-small-button inline-flex items-center gap-2"><i class="fas fa-calendar-days"></i> Histórico por data (D-1)</a>
+            <span id="today-summary-updated" class="text-[11px] text-slate-400" role="status" aria-live="polite">Dados atualizados ao abrir</span>
+        </div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+            <article class="erp-kpi">
+                <p class="erp-kpi-label"><i class="fas fa-car-side mr-1 text-blue-500"></i> Lavagens / ordens</p>
+                <p class="erp-kpi-value" data-today="orders">{{ $todaySummary['orders'] }}</p>
+                <p class="text-[11px] text-slate-500 mt-1">Ordens criadas hoje (exceto canceladas)</p>
+            </article>
+            <article class="erp-kpi">
+                <p class="erp-kpi-label"><i class="fas fa-wallet mr-1 text-emerald-600"></i> Recebido hoje</p>
+                <p class="erp-kpi-value text-emerald-700" data-today="received">R$ {{ number_format($todaySummary['received'], 2, ',', '.') }}</p>
+                <p class="text-[11px] text-slate-500 mt-1">Pagamentos lançados hoje, inclusive de OS anteriores</p>
+            </article>
+            <article class="erp-kpi">
+                <p class="erp-kpi-label"><i class="fas fa-bottle-water mr-1 text-amber-600"></i> Bebidas vendidas</p>
+                <p class="erp-kpi-value" data-today="drinks.quantity">{{ $todaySummary['drinks']['quantity'] }}</p>
+                <p class="text-xs text-slate-500" data-today="drinks.amount">R$ {{ number_format($todaySummary['drinks']['amount'], 2, ',', '.') }}</p>
+            </article>
+            <article class="erp-kpi">
+                <p class="erp-kpi-label"><i class="fas fa-soap mr-1 text-violet-600"></i> Serviços extras de lavagem</p>
+                <p class="erp-kpi-value" data-today="wash_addons.quantity">{{ $todaySummary['wash_addons']['quantity'] }}</p>
+                <p class="text-xs text-slate-500" data-today="wash_addons.amount">R$ {{ number_format($todaySummary['wash_addons']['amount'], 2, ',', '.') }}</p>
+            </article>
+        </div>
+        {{-- Lavagens principais por serviço x veículo; adicionais não duplicam a OS. --}}
+        <div class="erp-panel mb-3 overflow-hidden">
+            <div class="px-4 py-3 border-b border-slate-100 flex flex-wrap justify-between items-center gap-2">
+                <div><h4 class="text-xs font-extrabold text-slate-800">Lavagens por tipo e veículo</h4>
+                <p class="text-[11px] text-slate-500">Lavagem principal · quantidade por carro, SUV e picape · vendas do dia</p></div>
+                <strong class="text-xs text-blue-700" data-today="wash_types.total">{{ $todaySummary['wash_types']['quantity'] }} lavagens · R$ {{ number_format($todaySummary['wash_types']['amount'], 2, ',', '.') }}</strong>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[480px] text-xs text-slate-700">
+                    <thead class="bg-slate-50 text-slate-500"><tr>
+                        <th class="text-left py-2 px-4">Tipo de lavagem</th>
+                        <th class="text-center py-2 px-2">Carros</th><th class="text-center py-2 px-2">SUVs</th><th class="text-center py-2 px-2">Picapes</th>
+                        <th class="text-center py-2 px-2">Total</th><th class="text-right py-2 px-4">Valor</th>
+                    </tr></thead>
+                    <tbody id="today-wash-type-rows" class="divide-y divide-slate-100">
+                        @forelse($todaySummary['wash_types']['items'] as $wash)
+                        <tr><td class="py-2 px-4 font-semibold">{{ $wash['name'] }}</td>
+                            @foreach(['normal', 'suv', 'pickup'] as $type)
+                            <td class="text-center py-2 px-2 tabular-nums">{{ $wash['vehicles'][$type] }}</td>
+                            @endforeach
+                            <td class="text-center py-2 px-2 font-bold tabular-nums">{{ $wash['quantity'] }}</td>
+                            <td class="text-right py-2 px-4 tabular-nums">R$ {{ number_format($wash['amount'], 2, ',', '.') }}</td>
+                        </tr>
+                        @empty
+                        <tr><td colspan="6" class="py-4 px-4 text-center text-slate-400">Nenhuma lavagem principal registrada hoje.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="grid md:grid-cols-3 gap-3">
+            <div class="erp-panel p-4">
+                <h4 class="text-xs font-extrabold text-slate-700 mb-3">Veículos atendidos hoje</h4>
+                <div class="erp-detail-list">
+                    @foreach(['normal' => 'Carros', 'suv' => 'SUVs', 'pickup' => 'Picapes'] as $key => $label)
+                    <div class="erp-detail-line"><span>{{ $label }}</span><strong data-today="vehicles.{{ $key }}">{{ $todaySummary['vehicles'][$key] }}</strong></div>
+                    @endforeach
+                </div>
+            </div>
+            <div class="erp-panel p-4">
+                <h4 class="text-xs font-extrabold text-slate-700 mb-3">Recebimentos por modalidade</h4>
+                <div class="erp-detail-list">
+                    @foreach(['pix' => 'Pix', 'cash' => 'Dinheiro', 'credit' => 'Crédito', 'debit' => 'Débito'] as $key => $label)
+                    <div class="erp-detail-line"><span>{{ $label }}</span><strong data-today="payments.{{ $key }}.amount">R$ {{ number_format($todaySummary['payments'][$key]['amount'], 2, ',', '.') }}</strong></div>
+                    @endforeach
+                </div>
+            </div>
+            <div class="erp-panel p-4">
+                <h4 class="text-xs font-extrabold text-slate-700 mb-3">Adicionais vendidos hoje</h4>
+                <div class="erp-detail-list">
+                    <div class="erp-detail-line"><span>Bebidas</span><strong data-today="drinks.amount.detail">{{ $todaySummary['drinks']['quantity'] }} un. · R$ {{ number_format($todaySummary['drinks']['amount'], 2, ',', '.') }}</strong></div>
+                    <div class="erp-detail-line"><span>Lavagens extras</span><strong data-today="wash_addons.amount.detail">{{ $todaySummary['wash_addons']['quantity'] }} un. · R$ {{ number_format($todaySummary['wash_addons']['amount'], 2, ',', '.') }}</strong></div>
+                </div>
+                <div class="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-3">
+                    <div><p class="text-[11px] font-bold text-slate-500 mb-2">Bebidas mais vendidas</p><div id="today-drink-details" class="space-y-1.5">
+                        @forelse($todaySummary['drinks']['items'] as $item)
+                        <p class="text-[11px] text-slate-600">{{ $item['quantity'] }}× {{ $item['name'] }}</p>
+                        @empty <p class="text-[11px] text-slate-400">Nenhuma hoje</p> @endforelse
+                    </div></div>
+                    <div><p class="text-[11px] font-bold text-slate-500 mb-2">Lavagens adicionais</p><div id="today-wash-details" class="space-y-1.5">
+                        @forelse($todaySummary['wash_addons']['items'] as $item)
+                        <p class="text-[11px] text-slate-600">{{ $item['quantity'] }}× {{ $item['name'] }}</p>
+                        @empty <p class="text-[11px] text-slate-400">Nenhuma hoje</p> @endforelse
+                    </div></div>
+                </div>
+                <p class="text-[11px] text-slate-400 mt-3">Adicionais: valor das vendas registradas nas ordens de hoje, não necessariamente recebido.</p>
+            </div>
+        </div>
+    </section>
 
     @if($errors->any())
         <div class="erp-error mb-5" role="alert">
@@ -117,7 +231,7 @@
                 </section>
 
                 <section class="erp-panel" aria-labelledby="title-washes">
-                    <div class="erp-panel-head"><span class="erp-step">02</span><div class="flex-1"><h3 class="erp-section-title" id="title-washes">Lavagem</h3><p class="erp-hint">Escolha um serviço principal</p></div><span class="text-xs font-semibold text-slate-400">1 serviço</span></div>
+                    <div class="erp-panel-head"><span class="erp-step">02</span><div class="flex-1"><h3 class="erp-section-title" id="title-washes">Lavagem principal</h3><p class="erp-hint">Escolha uma lavagem principal; outros serviços poderão ser adicionados abaixo</p></div><span class="text-xs font-semibold text-slate-400">1 principal</span></div>
                     <div class="p-4 sm:p-5 grid sm:grid-cols-2 gap-3" id="wash-options">
                         @forelse($washes as $wash)
                         <button type="button" data-wash="{{ $wash->id }}" class="erp-wash" aria-pressed="false">
@@ -129,6 +243,24 @@
                         <p class="text-sm text-amber-700 sm:col-span-2">Nenhum serviço de lavagem ativo. Cadastre um produto do tipo lavagem antes de criar ordens.</p>
                         @endforelse
                     </div>
+                    <p id="wash-options-empty" hidden class="text-sm text-amber-700 px-5 pb-4">Nenhuma lavagem com preço maior que zero para este tipo de veículo. Cadastre o preço em Produtos.</p>
+                    <input type="hidden" name="primary_wash_id" id="primary_wash_id" value="{{ $primaryWashId }}">
+                </section>
+
+                <section class="erp-panel" aria-labelledby="title-extra-washes">
+                    <div class="erp-panel-head"><span class="erp-step"><i class="fas fa-sparkles"></i></span><div class="flex-1"><h3 class="erp-section-title" id="title-extra-washes">Serviços adicionais de lavagem</h3><p class="erp-hint">Inclua higienização, cera e outros serviços cadastrados como lavagem, sem substituir a principal</p></div><span class="text-xs font-semibold text-slate-400">Opcional</span></div>
+                    <div class="p-4 sm:p-5 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        @foreach($washes as $wash)
+                        <button type="button" class="erp-wash-addon" data-extra-wash="{{ $wash->id }}" aria-pressed="false">
+                            <span class="flex items-center justify-between gap-2">
+                                <span class="text-sm font-bold truncate">{{ $wash->name }}</span>
+                                <i class="fas fa-plus text-blue-600 text-sm" aria-hidden="true"></i>
+                            </span>
+                            <span class="block mt-2 text-xs font-bold text-blue-700" data-price-for="{{ $wash->id }}">—</span>
+                        </button>
+                        @endforeach
+                    </div>
+                    <p class="px-5 pb-4 text-[11px] text-slate-500">A lavagem principal não pode ser lançada novamente como adicional na mesma ordem. Cada serviço adicional é registrado separadamente.</p>
                 </section>
 
                 <section class="erp-panel" aria-labelledby="title-products">
@@ -210,6 +342,7 @@
     const catalog = @json($catalog);
     const oldItems = @json($selectedItems);
     const oldPaymentsText = @json(old('payments', '[]'));
+    const oldPrimaryWash = @json($primaryWashId);
     const money = (cents) => (cents / 100).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
     const price = (id, type) => Number(catalog[id]?.[type] || 0);
     const quantities = {};
@@ -219,6 +352,7 @@
     let payments = [];
     let saving = false;
     let totalCents = 0;
+    let primaryWashId = oldPrimaryWash && catalog[oldPrimaryWash]?.type === 'wash' ? String(oldPrimaryWash) : null;
 
     for (const [id, qty] of Object.entries(oldItems || {})) {
         if (catalog[id]) quantities[id] = Math.min(100, Math.max(0, Number.parseInt(qty, 10) || 0));
@@ -229,17 +363,39 @@
     } catch (_) { /* dados de formulário antigo inválidos não interrompem a tela */ }
 
     const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    const findWash = () => Object.keys(quantities).find(id => quantities[id] > 0 && catalog[id]?.type === 'wash');
-    const selected = () => Object.keys(quantities).filter(id => quantities[id] > 0 && catalog[id]);
+    const findWash = () => primaryWashId && quantities[primaryWashId] === 1 ? primaryWashId : null;
+    const selected = () => Object.keys(quantities)
+        .filter(id => quantities[id] > 0 && catalog[id])
+        .sort((a,b) => (a === primaryWashId ? -1 : b === primaryWashId ? 1 : (catalog[a].type === 'wash' ? -1 : catalog[b].type === 'wash' ? 1 : 0)));
     const showError = message => { const n = document.getElementById('order-notice'); n.textContent = message; n.classList.remove('hidden'); n.scrollIntoView({behavior:'smooth',block:'nearest'}); };
     const hideError = () => document.getElementById('order-notice').classList.add('hidden');
 
+    function refreshWashAvailability() {
+        // Uma lavagem gratuita/sem preço nao aparece para a categoria de veiculo escolhida.
+        // Remove selecoes antigas ao mudar a categoria para evitar OS invalida.
+        for (const [id, item] of Object.entries(catalog)) {
+            if (item.type !== 'wash') continue;
+            const available = price(id, vehicle) > 0;
+            root.querySelectorAll(`[data-wash="${id}"], [data-extra-wash="${id}"]`).forEach(button => {
+                button.hidden = !available;
+                button.disabled = !available;
+            });
+            if (!available) {
+                delete quantities[id];
+                if (primaryWashId === id) primaryWashId = null;
+            }
+        }
+        const availablePrimary = [...root.querySelectorAll('[data-wash]')].some(b => !b.hidden);
+        document.getElementById('wash-options-empty').hidden = availablePrimary;
+        document.getElementById('save-order').disabled = !availablePrimary;
+    }
     function setVehicle(type) {
         if (!['normal','suv','pickup'].includes(type)) return;
         vehicle = type;
         document.getElementById('vehicle_type').value = type;
         root.querySelectorAll('[data-vehicle]').forEach(b => { const a = b.dataset.vehicle === type; b.dataset.active = a; b.setAttribute('aria-pressed', String(a)); });
         root.querySelectorAll('[data-price-for]').forEach(el => el.textContent = money(price(el.dataset.priceFor, vehicle)));
+        refreshWashAvailability();
         render();
     }
     function setCustomer(type) {
@@ -249,8 +405,16 @@
         document.getElementById('pj-fields').hidden = type !== 'pj';
     }
     function setWash(id) {
-        for (const key of Object.keys(quantities)) if (catalog[key]?.type === 'wash') delete quantities[key];
-        if (id && catalog[id]?.type === 'wash') quantities[id] = 1;
+        if (!id || catalog[id]?.type !== 'wash' || price(id, vehicle) <= 0) return;
+        if (primaryWashId && primaryWashId !== id) delete quantities[primaryWashId];
+        primaryWashId = String(id);
+        quantities[id] = 1;
+        hideError();
+        render();
+    }
+    function toggleExtraWash(id) {
+        if (!id || catalog[id]?.type !== 'wash' || id === primaryWashId || price(id, vehicle) <= 0) return;
+        if (quantities[id]) delete quantities[id]; else quantities[id] = 1;
         hideError();
         render();
     }
@@ -270,7 +434,16 @@
             input.type = 'hidden'; input.name = `items[${id}]`; input.value = quantities[id]; inputs.appendChild(input);
         }
         const wash = findWash();
+        document.getElementById('primary_wash_id').value = wash || '';
         root.querySelectorAll('[data-wash]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.wash === wash)));
+        root.querySelectorAll('[data-extra-wash]').forEach(b => {
+            const isPrimary = b.dataset.extraWash === primaryWashId;
+            b.disabled = isPrimary || price(b.dataset.extraWash, vehicle) <= 0;
+            b.setAttribute('aria-pressed', String(!isPrimary && Boolean(quantities[b.dataset.extraWash])));
+            b.querySelector('i')?.classList.toggle('fa-check', !isPrimary && Boolean(quantities[b.dataset.extraWash]));
+            b.querySelector('i')?.classList.toggle('fa-plus', isPrimary || !quantities[b.dataset.extraWash]);
+            b.title = isPrimary ? 'Este serviço já é a lavagem principal' : '';
+        });
         root.querySelectorAll('[data-product]').forEach(el => {
             const id = el.dataset.product, count = quantities[id] || 0;
             el.dataset.selected = String(count > 0);
@@ -287,7 +460,8 @@
             const count = quantities[id], amount = price(id,vehicle)*count;
             units += count; totalCents += amount;
             const el = document.createElement('div'); el.className = 'erp-summary-line';
-            el.innerHTML = `<span class="text-slate-600 min-w-0 break-words">${count}× ${escapeHtml(catalog[id].name)}</span><strong class="text-slate-900 whitespace-nowrap tabular-nums">${money(amount)}</strong>`;
+            const prefix = catalog[id].type === 'wash' ? (id === primaryWashId ? 'Principal · ' : 'Adicional · ') : '';
+            el.innerHTML = `<span class="text-slate-600 min-w-0 break-words">${prefix}${count}× ${escapeHtml(catalog[id].name)}</span><strong class="text-slate-900 whitespace-nowrap tabular-nums">${money(amount)}</strong>`;
             summary.append(el);
         }
         document.getElementById('totalAmount').textContent = money(totalCents);
@@ -335,6 +509,7 @@
         if (b.dataset.vehicle) setVehicle(b.dataset.vehicle);
         else if (b.dataset.customer) setCustomer(b.dataset.customer);
         else if (b.dataset.wash) setWash(b.dataset.wash);
+        else if (b.dataset.extraWash) toggleExtraWash(b.dataset.extraWash);
         else if (b.dataset.inc) changeQty(b.dataset.inc,1);
         else if (b.dataset.dec) changeQty(b.dataset.dec,-1);
         else if (b.dataset.filter) {
@@ -360,6 +535,78 @@
         payments[i].cents = cents;
         hideError(); renderPayments();
     });
+    // Painel diário se atualiza sem recarregar o formulário e perder a ordem em edição.
+    async function refreshTodaySummary() {
+        if (document.hidden) return;
+        const panel = document.getElementById('today-summary');
+        const status = document.getElementById('today-summary-updated');
+        try {
+            const response = await fetch(panel.dataset.summaryUrl, {
+                credentials: 'same-origin', headers: { 'Accept':'application/json' }, cache: 'no-store'
+            });
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            const summary = await response.json();
+            const values = {
+                'orders': summary.orders,
+                'received': money(Math.round(summary.received * 100)),
+                'drinks.quantity': summary.drinks.quantity,
+                'drinks.amount': money(Math.round(summary.drinks.amount * 100)),
+                'wash_addons.quantity': summary.wash_addons.quantity,
+                'wash_addons.amount': money(Math.round(summary.wash_addons.amount * 100)),
+                'drinks.amount.detail': `${summary.drinks.quantity} un. · ${money(Math.round(summary.drinks.amount * 100))}`,
+                'wash_addons.amount.detail': `${summary.wash_addons.quantity} un. · ${money(Math.round(summary.wash_addons.amount * 100))}`
+            };
+            values['wash_types.total'] = `${summary.wash_types.quantity} lavagens · ${money(Math.round(summary.wash_types.amount * 100))}`;
+            for (const type of ['normal','suv','pickup']) values[`vehicles.${type}`] = summary.vehicles[type] || 0;
+            for (const method of ['pix','cash','credit','debit']) values[`payments.${method}.amount`] = money(Math.round((summary.payments[method]?.amount || 0) * 100));
+            for (const [key,value] of Object.entries(values)) {
+                const el = panel.querySelector(`[data-today="${key}"]`);
+                if (el) el.textContent = value;
+            }
+            // Renderizar apenas texto vindo da API (nunca HTML) para evitar XSS.
+            const washBody = document.getElementById('today-wash-type-rows');
+            washBody.replaceChildren();
+            const washTypes = summary.wash_types.items || [];
+            if (!washTypes.length) {
+                const tr = document.createElement('tr');
+                const td = document.createElement('td');
+                td.colSpan = 6; td.className = 'py-4 px-4 text-center text-slate-400';
+                td.textContent = 'Nenhuma lavagem principal registrada hoje.';
+                tr.appendChild(td); washBody.appendChild(tr);
+            }
+            for (const wash of washTypes) {
+                const tr = document.createElement('tr');
+                const cells = [wash.name, wash.vehicles.normal || 0, wash.vehicles.suv || 0,
+                    wash.vehicles.pickup || 0, wash.quantity, money(Math.round(wash.amount * 100))];
+                cells.forEach((value, index) => {
+                    const td = document.createElement('td');
+                    td.className = index === 0 ? 'py-2 px-4 font-semibold' : index === 5
+                        ? 'text-right py-2 px-4 tabular-nums' : 'text-center py-2 px-2 tabular-nums';
+                    td.textContent = value;
+                    tr.appendChild(td);
+                });
+                washBody.appendChild(tr);
+            }
+            for (const [key,rows] of [['today-drink-details',summary.drinks.items],['today-wash-details',summary.wash_addons.items]]) {
+                const holder = document.getElementById(key);
+                holder.replaceChildren();
+                if (!rows?.length) {
+                    const empty = document.createElement('p'); empty.className = 'text-[11px] text-slate-400'; empty.textContent = 'Nenhuma hoje'; holder.appendChild(empty);
+                } else {
+                    rows.forEach(item => {
+                        const line = document.createElement('p'); line.className = 'text-[11px] text-slate-600';
+                        line.textContent = `${item.quantity}× ${item.name}`; holder.appendChild(line);
+                    });
+                }
+            }
+            status.textContent = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+        } catch (_) {
+            status.textContent = 'Sem conexão · exibindo último resumo disponível';
+        }
+    }
+    setInterval(refreshTodaySummary, 60000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshTodaySummary(); });
+
     document.getElementById('product-search').addEventListener('input', filterProducts);
     document.getElementById('license_plate').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g,''); });
     form.addEventListener('submit', e => {

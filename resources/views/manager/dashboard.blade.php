@@ -121,7 +121,7 @@
                     <p class="text-2xl font-bold mt-1" x-text="money(analytics.monthRevenue)">—</p>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
-                    <div class="rounded-xl bg-slate-50 p-3"><p class="text-[11px] text-slate-400">Custos</p><p class="font-bold mt-1" x-text="money(analytics.expenses)">—</p></div>
+                    <div class="rounded-xl bg-slate-50 p-3"><p class="text-[11px] text-slate-400">Custos totais</p><p class="font-bold mt-1" x-text="money(analytics.expenses)">—</p><p class="text-[11px] text-slate-500 mt-1">Inclui despesas operacionais</p></div>
                     <div class="rounded-xl bg-slate-50 p-3"><p class="text-[11px] text-slate-400">Resultado</p><p class="font-bold mt-1" :class="analytics.profit >= 0 ? 'text-emerald-600' : 'text-rose-600'" x-text="money(analytics.profit)">—</p></div>
                 </div>
                 <a href="{{ route('manager.payroll.index') }}" class="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3 text-sm font-semibold hover:bg-slate-50">

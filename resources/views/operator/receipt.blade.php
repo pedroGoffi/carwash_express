@@ -178,7 +178,7 @@
         </div>
 
         <!-- SERVICO PRINCIPAL -->
-        @php $primeiro = $order->products->first(fn ($item) => $item->type?->value === 'wash') ?? $order->products->first(); @endphp
+        @php $primeiro = $order->products->first(fn ($item) => (bool) $item->pivot->is_primary_wash) ?? $order->products->first(); @endphp
         <div class="main-service">
             <div class="main-service-name">{{ strtoupper($primeiro?->name ?? 'SERVIÇO') }}</div>
             <h5>R$</h5>
@@ -191,7 +191,7 @@
             @foreach($order->products as $index => $item)
                 @if($primeiro && $item->id !== $primeiro->id)
                 <div class="service-item">
-                    <div class="service-name" title="{{ $item->name }}">{{ $item->pivot->quantity }}× {{ substr($item->name, 0, 12) }}</div>
+                    <div class="service-name" title="{{ $item->name }}">{{ $item->type?->value === 'wash' ? '+ Lav. ' : '' }}{{ $item->pivot->quantity }}× {{ substr($item->name, 0, 12) }}</div>
                     <div class="service-price">R$ {{ number_format($item->pivot->total_price, 2, ',', '.') }}</div>
                 </div>
                 @endif

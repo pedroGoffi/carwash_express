@@ -41,6 +41,6 @@ class Product extends Model
     public function serviceOrders()
     {
         return $this->belongsToMany(ServiceOrder::class, 'service_order_items')
-            ->withPivot('quantity', 'unit_price', 'total_price');
+            ->withPivot('quantity', 'unit_price', 'total_price', 'is_primary_wash');
     }
 }

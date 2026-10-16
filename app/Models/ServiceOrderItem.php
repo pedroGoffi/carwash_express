@@ -15,6 +15,7 @@ class ServiceOrderItem extends Pivot
         'quantity',
         'unit_price',
         'total_price',
+        'is_primary_wash',
     ];
 
     protected function casts(): array
@@ -23,6 +24,7 @@ class ServiceOrderItem extends Pivot
             'quantity' => 'integer',
             'unit_price' => 'decimal:2',
             'total_price' => 'decimal:2',
+            'is_primary_wash' => 'boolean',
         ];
     }
 }

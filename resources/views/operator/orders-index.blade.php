@@ -93,12 +93,10 @@
                         </td>
                         <td class="px-5 py-4 align-top max-w-xs">
                             <div class="flex flex-wrap gap-1.5">
-                                @foreach($order->products->take(3) as $product)
-                                    <span class="rounded-lg bg-gray-100 px-2 py-1 text-xs text-gray-700">@if($product->pivot->quantity > 1){{ $product->pivot->quantity }}× @endif{{ $product->name }}</span>
+                                @foreach($order->products as $product)
+                                    <span class="rounded-lg {{ $product->type?->value === 'wash' && !$product->pivot->is_primary_wash ? 'bg-blue-50 text-blue-800' : 'bg-gray-100 text-gray-700' }} px-2 py-1 text-xs">@if($product->type?->value === 'wash' && !$product->pivot->is_primary_wash)<span class="font-semibold">+ Lav. · </span>@endif @if($product->pivot->quantity > 1){{ $product->pivot->quantity }}× @endif{{ $product->name }}</span>
                                 @endforeach
-                                @if($order->products->count() > 3)
-                                    <span class="rounded-lg bg-gray-100 px-2 py-1 text-xs text-gray-500">+{{ $order->products->count() - 3 }}</span>
-                                @endif
+
                             </div>
                         </td>
                         <td class="px-5 py-4 align-top">

@@ -83,6 +83,11 @@ final class DashboardService
                 ->whereBetween('date', [$monthStart->toDateString(), $monthEnd->toDateString()])
                 ->sum('amount');
 
+            $operatingCosts = (float) DB::table('operating_expenses')
+                ->where('company_id', $companyId)
+                ->whereBetween('date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+                ->sum('amount');
+
             $costs = DB::table('advances')
                 ->where('company_id', $companyId)
                 ->whereBetween('date', [$monthStart->toDateString(), $monthEnd->toDateString()])
@@ -113,11 +118,19 @@ final class DashboardService
                 ->get()
                 ->keyBy(fn ($row) => substr((string) $row->month, 0, 7));
 
-            $months = collect(range(5, 0))->map(function ($i) use ($now, $revenueMonths, $expenseMonths, $totalSalaries) {
+            $operatingMonths = DB::table('operating_expenses')
+                ->where('company_id', $companyId)
+                ->whereBetween('date', [$sixMonthStart->toDateString(), $monthEnd->toDateString()])
+                ->selectRaw("DATE_TRUNC('month', date) AS month, SUM(amount) AS total")
+                ->groupByRaw("DATE_TRUNC('month', date)")
+                ->get()->keyBy(fn ($row) => substr((string) $row->month, 0, 7));
+
+            $months = collect(range(5, 0))->map(function ($i) use ($now, $revenueMonths, $expenseMonths, $operatingMonths, $totalSalaries) {
                 $month = $now->copy()->subMonths($i)->startOfMonth();
                 $key = $month->format('Y-m');
                 $revenue = (float) ($revenueMonths->get($key)->total ?? 0);
-                $expenses = $totalSalaries + (float) ($expenseMonths->get($key)->total ?? 0);
+                $expenses = $totalSalaries + (float) ($expenseMonths->get($key)->total ?? 0)
+                    + (float) ($operatingMonths->get($key)->total ?? 0);
 
                 return [
                     'label' => $month->translatedFormat('M/y'),
@@ -140,7 +153,7 @@ final class DashboardService
 
             $advances = (float) ($costs->advances ?? 0);
             $consumptions = (float) ($costs->consumptions ?? 0);
-            $expenses = $totalSalaries + $extraCosts;
+            $expenses = $totalSalaries + $extraCosts + $operatingCosts;
             $profit = $monthRevenue - $expenses;
 
             return [
@@ -149,6 +162,7 @@ final class DashboardService
                 'advances' => $advances,
                 'consumptions' => $consumptions,
                 'extraCosts' => $extraCosts,
+                'operatingCosts' => $operatingCosts,
                 'expenses' => $expenses,
                 'profit' => $profit,
                 'margin' => $monthRevenue > 0 ? ($profit / $monthRevenue) * 100 : 0,

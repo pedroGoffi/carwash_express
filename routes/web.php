@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Manager\AdvanceController;
 use App\Http\Controllers\Manager\EmployeeExpenseController;
+use App\Http\Controllers\Manager\OperatingExpenseController;
 use App\Http\Controllers\Manager\ConsumptionController;
 use App\Http\Controllers\Manager\DashboardController as ManagerDashboardController;
 use App\Http\Controllers\Manager\NoteController;
@@ -47,6 +48,11 @@ Route::middleware(['auth', 'role:admin,manager'])->prefix('manager')->name('mana
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/data', [ReportController::class, 'getData'])->name('reports.data');
 
+    // Custos operacionais, separados da folha de pagamento.
+    Route::get('/operating-expenses', [OperatingExpenseController::class, 'index'])->name('operating-expenses.index');
+    Route::post('/operating-expenses', [OperatingExpenseController::class, 'store'])->name('operating-expenses.store');
+    Route::delete('/operating-expenses/{expense}', [OperatingExpenseController::class, 'destroy'])->name('operating-expenses.destroy');
+
     // Adiantamentos
     Route::resource('advances', AdvanceController::class)->except(['show', 'create', 'edit', 'update']);
 
@@ -75,6 +81,8 @@ Route::middleware(['auth', 'role:admin,manager,operator'])->prefix('operator')->
     // Ordens de Serviço
     Route::get('/orders', [ServiceOrderController::class, 'index'])->name('orders.index');
     Route::get('/create-order', [ServiceOrderController::class, 'create'])->name('orders.create');
+    Route::get('/orders/today-summary', [ServiceOrderController::class, 'todaySummary'])->name('orders.today-summary');
+    Route::get('/daily-summary', [ServiceOrderController::class, 'dailySummary'])->name('daily-summary');
     Route::post('/orders', [ServiceOrderController::class, 'store'])->name('orders.store');
     
     // Recibo, finalizar e Cancelar

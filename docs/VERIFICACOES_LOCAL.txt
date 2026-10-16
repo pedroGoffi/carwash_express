@@ -1,0 +1,25 @@
+PASS PHP lint app/Http/Controllers/Operator/ServiceOrderController.php
+PASS PHP lint app/Services/Operator/TodayOrderSummaryService.php
+PASS PHP lint app/Models/ServiceOrder.php
+PASS PHP lint app/Models/Product.php
+PASS PHP lint app/Models/ServiceOrderItem.php
+PASS PHP lint database/migrations/2026_10_16_000001_mark_primary_wash_on_order_items.php
+PASS PHP lint tests/Feature/OrderWashExtrasAndTodaySummaryTest.php
+PASS PHP lint routes/web.php
+PASS JS inline syntax
+PASS Enforced principal on server
+PASS Tenant scoping order items
+PASS Saved primary marker on pivot
+PASS Legacy additive migration
+PASS Receipt uses primary marker
+PASS Stats route authenticated
+PASS Payments are based on payment date
+PASS Add-on sales are based on order date
+PASS Frontend monthly query uses named route
+PASS Beverage breakdown present
+PASS Product types unaffected
+PASS SQL smoke: current payments of older orders, no other tenant/cancelled
+PASS SQL smoke: extra wash excludes primary/other tenant/cancelled
+Total 22/22
+
+Observacao: testes PHPUnit/Laravel nao foram executados: vendor/composer ausentes. Os 2 SQL smoke tests usam SQLite isolado, nao o framework.
