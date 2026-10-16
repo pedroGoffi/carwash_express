@@ -8,6 +8,7 @@ use App\Models\ProductPrice;
 use App\Enums\ProductType;
 use App\Enums\VehicleType;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
@@ -32,8 +33,10 @@ class ProductController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'type' => 'required|in:wash,drink,snack',
-            'prices' => 'required|array',
+            'type' => 'required|in:wash,drink,snack,other',
+            'prices' => 'required|array:normal,suv,pickup',
+            'prices.suv' => 'nullable|numeric|min:0',
+            'prices.pickup' => 'nullable|numeric|min:0',
             'prices.normal' => 'required|numeric|min:0',
         ]);
 
@@ -77,11 +80,17 @@ class ProductController extends Controller
         
         $request->validate([
             'name' => 'required|string|max:255',
-            'type' => 'required|in:wash,drink,snack',
+            'type' => 'required|in:wash,drink,snack,other',
             'active' => 'boolean',
-            'prices' => 'required|array',
+            'prices' => 'required|array:normal,suv,pickup',
+            'prices.suv' => 'nullable|numeric|min:0',
+            'prices.pickup' => 'nullable|numeric|min:0',
             'prices.normal' => 'required|numeric|min:0',
         ]);
+
+        if ($product->serviceOrders()->exists() && $request->type !== $product->type->value) {
+            throw ValidationException::withMessages(['type' => 'Produtos já vendidos não podem mudar de categoria. Desative o antigo e cadastre outro produto.']);
+        }
 
         $product->update([
             'name' => $request->name,
@@ -108,8 +117,13 @@ class ProductController extends Controller
     public function destroy(Product $product)
     {
         $this->authorizeCompany($product);
+        if ($product->serviceOrders()->exists() || \App\Models\Advance::where('product_id', $product->id)->exists()) {
+            $product->update(['active' => false]);
+            return redirect()->route('manager.products.index')
+                ->with('success', 'Produto desativado; o histórico das vendas foi preservado.');
+        }
+        $product->prices()->delete();
         $product->delete();
-        
         return redirect()->route('manager.products.index')
             ->with('success', 'Produto removido!');
     }

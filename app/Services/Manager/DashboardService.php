@@ -19,8 +19,10 @@ final class DashboardService
 
             $orderStats = DB::table('service_orders')
                 ->where('company_id', $companyId)
-                ->selectRaw('COUNT(*) FILTER (WHERE created_at BETWEEN ? AND ?) AS today_count', [$dayStart, $dayEnd])
-                ->selectRaw('COUNT(*) FILTER (WHERE created_at BETWEEN ? AND ?) AS month_count', [$monthStart, $monthEnd])
+                ->selectRaw('COUNT(*) FILTER (WHERE order_type = \'service\' AND created_at BETWEEN ? AND ?) AS today_count', [$dayStart, $dayEnd])
+                ->selectRaw('COUNT(*) FILTER (WHERE order_type = \'service\' AND created_at BETWEEN ? AND ?) AS month_count', [$monthStart, $monthEnd])
+                ->selectRaw('COUNT(*) FILTER (WHERE order_type = \'sale\' AND created_at BETWEEN ? AND ?) AS today_sale_count', [$dayStart, $dayEnd])
+                ->selectRaw('COUNT(*) FILTER (WHERE order_type = \'sale\' AND created_at BETWEEN ? AND ?) AS month_sale_count', [$monthStart, $monthEnd])
                 ->selectRaw('COUNT(*) FILTER (WHERE status = ?) AS waiting_count', [ServiceOrderStatus::WAITING->value])
                 ->selectRaw('COUNT(*) FILTER (WHERE status = ?) AS queue_count', [ServiceOrderStatus::QUEUED->value])
                 ->selectRaw('COUNT(*) FILTER (WHERE status = ?) AS ready_count', [ServiceOrderStatus::FINISHED->value])
@@ -37,12 +39,13 @@ final class DashboardService
                 ->where('company_id', $companyId)
                 ->latest('id')
                 ->limit(8)
-                ->get(['id', 'code', 'customer_name', 'license_plate', 'status', 'total', 'created_at'])
+                ->get(['id', 'code', 'customer_name', 'license_plate', 'order_type', 'status', 'total', 'created_at'])
                 ->map(fn ($order) => [
                     'id' => (int) $order->id,
                     'code' => $order->code,
                     'customer_name' => $order->customer_name,
                     'license_plate' => $order->license_plate,
+                    'order_type' => $order->order_type,
                     'status' => $order->status,
                     'total' => (float) $order->total,
                     'created_at' => $order->created_at,
@@ -50,13 +53,16 @@ final class DashboardService
 
             $todayOrders = (int) ($orderStats->today_count ?? 0);
             $todayRevenue = (float) ($revenue->today_revenue ?? 0);
+            $todaySales = (int) ($orderStats->today_sale_count ?? 0);
 
             return [
                 'totalOrdersToday' => $todayOrders,
                 'totalOrdersMonth' => (int) ($orderStats->month_count ?? 0),
+                'salesToday' => $todaySales,
+                'salesMonth' => (int) ($orderStats->month_sale_count ?? 0),
                 'totalRevenueToday' => $todayRevenue,
                 'totalRevenueMonth' => (float) ($revenue->month_revenue ?? 0),
-                'averageTicketToday' => $todayOrders > 0 ? $todayRevenue / $todayOrders : 0,
+                'averageTicketToday' => ($todayOrders + $todaySales) > 0 ? $todayRevenue / ($todayOrders + $todaySales) : 0,
                 'waitingCount' => (int) ($orderStats->waiting_count ?? 0),
                 'queueCount' => (int) ($orderStats->queue_count ?? 0),
                 'readyCount' => (int) ($orderStats->ready_count ?? 0),

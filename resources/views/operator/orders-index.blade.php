@@ -2,7 +2,7 @@
 
 @section('title', 'Ordens de Serviço')
 @section('header', 'Ordens de Serviço')
-@section('subheader', 'Acompanhe todos os veículos, da chegada até a entrega')
+@section('subheader', 'Lavagens, vendas balcão e recebimentos em uma única tela')
 
 @section('content')
 @php
@@ -10,7 +10,7 @@
         'waiting' => ['label' => 'Em espera', 'bg' => 'bg-amber-100', 'text' => 'text-amber-700', 'icon' => 'fa-clock'],
         'queued' => ['label' => 'Na fila', 'bg' => 'bg-blue-100', 'text' => 'text-blue-700', 'icon' => 'fa-list-ol'],
         'finished' => ['label' => 'Concluído · entregar chaves', 'bg' => 'bg-emerald-100', 'text' => 'text-emerald-700', 'icon' => 'fa-key'],
-        'delivered' => ['label' => 'Entregue', 'bg' => 'bg-slate-100', 'text' => 'text-slate-700', 'icon' => 'fa-circle-check'],
+        'delivered' => ['label' => 'Entregue / PDV concluído', 'bg' => 'bg-slate-100', 'text' => 'text-slate-700', 'icon' => 'fa-circle-check'],
         'cancelled' => ['label' => 'Cancelada', 'bg' => 'bg-red-100', 'text' => 'text-red-700', 'icon' => 'fa-ban'],
     ];
 @endphp
@@ -24,7 +24,7 @@
 
     <div class="grid grid-cols-2 xl:grid-cols-5 gap-3">
         @foreach($statusMeta as $key => $meta)
-            <a href="{{ route('operator.orders.index', ['status' => $key]) }}"
+            <a href="{{ route('operator.orders.index', array_filter(['status' => $key, 'order_type' => $orderType])) }}"
                class="rounded-2xl border {{ $status === $key ? 'border-blue-500 ring-2 ring-blue-100' : 'border-gray-200' }} bg-white p-4 shadow-sm hover:shadow-md transition">
                 <div class="flex items-center justify-between gap-3">
                     <div class="w-10 h-10 {{ $meta['bg'] }} {{ $meta['text'] }} rounded-xl flex items-center justify-center">
@@ -45,6 +45,11 @@
                     <input name="q" value="{{ $search }}" placeholder="Buscar por OS, placa ou cliente"
                            class="w-full rounded-xl border-gray-200 pl-11 pr-4 py-3 focus:border-blue-500 focus:ring-blue-500">
                 </div>
+                <select name="order_type" aria-label="Tipo de atendimento" class="rounded-xl border-gray-200 px-4 py-3 focus:border-blue-500 focus:ring-blue-500">
+                    <option value="">Lavagens e vendas</option>
+                    <option value="service" @selected($orderType === 'service')>Só lavagens</option>
+                    <option value="sale" @selected($orderType === 'sale')>Só vendas balcão (PDV)</option>
+                </select>
                 <select name="status" class="rounded-xl border-gray-200 px-4 py-3 focus:border-blue-500 focus:ring-blue-500">
                     <option value="">Todos os status</option>
                     @foreach($statusMeta as $key => $meta)
@@ -55,9 +60,11 @@
                     Filtrar
                 </button>
             </form>
+            <div class="flex flex-wrap gap-2">
             <a href="{{ route('operator.orders.create') }}" class="rounded-xl bg-blue-600 text-white px-5 py-3 font-semibold hover:bg-blue-700 inline-flex items-center justify-center gap-2">
-                <i class="fas fa-plus"></i> Nova ordem
+                <i class="fas fa-plus"></i> Novo lançamento · PDV + Lavagem
             </a>
+            </div>
         </div>
 
         <div class="overflow-x-auto">
@@ -65,8 +72,8 @@
                 <thead class="bg-gray-50">
                     <tr class="text-left text-xs uppercase tracking-wide text-gray-500">
                         <th class="px-5 py-3 font-semibold">Ordem</th>
-                        <th class="px-5 py-3 font-semibold">Veículo / cliente</th>
-                        <th class="px-5 py-3 font-semibold">Serviços</th>
+                        <th class="px-5 py-3 font-semibold">Venda / cliente</th>
+                        <th class="px-5 py-3 font-semibold">Itens</th>
                         <th class="px-5 py-3 font-semibold">Pagamento</th>
                         <th class="px-5 py-3 font-semibold">Status</th>
                         <th class="px-5 py-3 font-semibold text-right">Ações</th>
@@ -85,11 +92,12 @@
                             <a href="{{ route('operator.orders.receipt', $order) }}" class="font-mono font-bold text-blue-600 hover:underline">#{{ $order->code }}</a>
                             <p class="text-xs text-gray-400 mt-1">{{ $order->created_at->format('d/m/Y H:i') }}</p>
                             <p class="text-sm font-bold text-gray-900 mt-2">R$ {{ number_format($order->total, 2, ',', '.') }}</p>
+                            @if($order->order_type === 'sale')<span class="inline-flex mt-2 rounded-md bg-blue-50 text-blue-700 px-2 py-1 text-xs font-bold"><i class="fas fa-cash-register mr-1"></i> PDV</span>@endif
                         </td>
                         <td class="px-5 py-4 align-top">
-                            <div class="font-mono font-bold uppercase text-gray-900">{{ $order->license_plate }}</div>
+                            <div class="font-mono font-bold uppercase text-gray-900">{{ $order->order_type === 'sale' ? 'Venda balcão · sem veículo' : $order->license_plate }}</div>
                             <div class="text-sm text-gray-600 mt-1">{{ $order->customer_name ?: 'Cliente não informado' }}</div>
-                            <div class="text-xs text-gray-400 mt-1">{{ strtoupper($order->vehicle_type) }}</div>
+                            @if($order->order_type !== 'sale')<div class="text-xs text-gray-400 mt-1">{{ strtoupper($order->vehicle_type) }}</div>@endif
                         </td>
                         <td class="px-5 py-4 align-top max-w-xs">
                             <div class="flex flex-wrap gap-1.5">
@@ -108,7 +116,7 @@
                         </td>
                         <td class="px-5 py-4 align-top">
                             <span class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold {{ $meta['bg'] }} {{ $meta['text'] }}">
-                                <i class="fas {{ $meta['icon'] }}"></i>{{ $meta['label'] }}
+                                <i class="fas {{ $meta['icon'] }}"></i>{{ $order->order_type === 'sale' && $key === 'delivered' ? 'Venda concluída' : $meta['label'] }}
                             </span>
                         </td>
                         <td class="px-5 py-4 align-top text-right">

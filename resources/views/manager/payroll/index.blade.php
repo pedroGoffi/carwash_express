@@ -96,7 +96,11 @@
         </section>
         <div class="cw-card p-5 flex flex-col sm:flex-row gap-4 sm:items-center justify-between">
             <div><h3 class="font-semibold text-slate-900">Fechamento mensal</h3><p class="text-xs text-slate-500 mt-1">Registra os valores atuais da folha. Revise a competência antes de confirmar.</p></div>
+            @if(!auth()->user()->isOperator())
             <form method="POST" action="{{ route('manager.payroll.close-period') }}" onsubmit="return confirm('Fechar a competência? Um novo fechamento atualiza o histórico desse mês.')">@csrf<input type="hidden" name="month" value="{{ $month }}"><button class="cw-btn-primary"><i class="fas fa-lock mr-2"></i>{{ $closedForPeriod ? 'Atualizar fechamento' : 'Fechar competência' }}</button></form>
+            @else
+                <span class="text-xs text-slate-500">Fechamento disponível somente para gerente/administrador</span>
+            @endif
         </div>
     @elseif($tab==='movements')
         <section class="cw-card overflow-hidden"><div class="p-5 border-b border-slate-100"><h3 class="font-bold text-slate-900">Vales e consumos {{ $employee ? 'de '.$employee->name : '' }}</h3><p class="text-xs text-slate-500 mt-1">Lançamentos que reduzem o valor líquido da folha.</p></div>

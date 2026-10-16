@@ -21,14 +21,15 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Tipo *</label>
-                    <select name="type" required class="w-full border border-gray-300 rounded-lg px-3 py-2">
-                        <option value="wash" {{ $product->type == 'wash' ? 'selected' : '' }}>Lavagem</option>
-                        <option value="drink" {{ $product->type == 'drink' ? 'selected' : '' }}>Bebida</option>
-                        <option value="snack" {{ $product->type == 'snack' ? 'selected' : '' }}>Comida</option>
+                    <select name="type" id="product-type" required class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                        <option value="wash" {{ $product->type->value == 'wash' ? 'selected' : '' }}>Lavagem</option>
+                        <option value="drink" {{ $product->type->value == 'drink' ? 'selected' : '' }}>Bebida</option>
+                        <option value="snack" {{ $product->type->value == 'snack' ? 'selected' : '' }}>Comida</option>
+                        <option value="other" {{ old('type', isset($product) ? $product->type->value : '') === 'other' ? 'selected' : '' }}>Outros produtos</option>
                     </select>
                 </div>
 
-                {{-- Tabela de Preços por Tipo de Veículo --}}
+                {{-- Preços de venda por Tipo de Veículo --}}
                 <div class="bg-gray-50 rounded-lg p-4">
                     <label class="block text-sm font-medium text-gray-700 mb-3">
                         <i class="fas fa-table mr-1"></i> Tabela de Preços
@@ -38,7 +39,7 @@
                         <table class="w-full">
                             <thead>
                                 <tr class="border-b">
-                                    <th class="text-left py-2 px-3 text-sm font-medium">Tipo do Veículo</th>
+                                    <th class="text-left py-2 px-3 text-sm font-medium">Categoria</th>
                                     <th class="text-left py-2 px-3 text-sm font-medium">Preço (R$)</th>
                                     <th class="text-left py-2 px-3 text-sm font-medium w-20"></th>
                                 </tr>
@@ -48,7 +49,7 @@
                                     <td class="py-2 px-3">
                                         <div class="flex items-center gap-2">
                                             <i class="fas fa-car-side text-blue-500"></i>
-                                            <span class="text-sm">Carro Pequeno</span>
+                                            <span class="text-sm">Preço base / PDV</span>
                                         </div>
                                     </td>
                                     <td class="py-2 px-3">
@@ -58,7 +59,7 @@
                                     </td>
                                     <td class="py-2 px-3 text-xs text-gray-400">Base</td>
                                 </tr>
-                                <tr class="border-b">
+                                <tr class="border-b" data-vehicle-price>
                                     <td class="py-2 px-3">
                                         <div class="flex items-center gap-2">
                                             <i class="fas fa-caravan text-green-500"></i>
@@ -90,7 +91,7 @@
                         </table>
                     </div>
                     <p class="text-xs text-gray-400 mt-3">
-                        <i class="fas fa-info-circle"></i> Se não informar preço para um tipo específico, será usado o preço do "Carro Pequeno"
+                        <i class="fas fa-info-circle"></i> Para bebidas e mercadorias, informe apenas o preço base / PDV. Para lavagens, é possível definir preços por veículo.
                     </p>
                 </div>
 
@@ -109,4 +110,13 @@
         </form>
     </div>
 </div>
+<script>
+(() => {
+    const type = document.getElementById('product-type');
+    if (!type) return;
+    const refresh = () => document.querySelectorAll('[data-vehicle-price]').forEach(row => row.hidden = type.value !== 'wash');
+    type.addEventListener('change', refresh);
+    refresh();
+})();
+</script>
 @endsection

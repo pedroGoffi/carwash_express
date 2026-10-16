@@ -148,7 +148,7 @@
         <!-- CODIGO -->
         <div class="code-section">
             <div class="code-value">{{ $order->code }}</div>
-            <div class="plate-value">{{ $order->license_plate ?? 'SEM PLACA' }}</div>
+            <div class="plate-value">{{ $order->order_type === 'sale' ? 'VENDA BALCAO / PDV' : ($order->license_plate ?? 'SEM PLACA') }}</div>
         </div>
 
         <!-- INFO CLIENTE -->
@@ -179,6 +179,13 @@
 
         <!-- SERVICO PRINCIPAL -->
         @php $primeiro = $order->products->first(fn ($item) => (bool) $item->pivot->is_primary_wash) ?? $order->products->first(); @endphp
+        @if($order->order_type === 'sale')
+        <div class="services-grid" style="grid-template-columns:1fr">
+            @foreach($order->products as $item)
+                <div class="service-item"><div class="service-name" style="max-width:180px" title="{{ $item->name }}">{{ $item->pivot->quantity }}× {{ $item->name }}</div><div class="service-price">R$ {{ number_format($item->pivot->total_price, 2, ',', '.') }}</div></div>
+            @endforeach
+        </div>
+        @else
         <div class="main-service">
             <div class="main-service-name">{{ strtoupper($primeiro?->name ?? 'SERVIÇO') }}</div>
             <h5>R$</h5>
@@ -199,6 +206,7 @@
         </div>
         @endif
 
+        @endif
         <!-- TOTAL -->
         <div class="total-box">
             <div class="total-label">TOTAL</div>

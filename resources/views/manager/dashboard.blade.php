@@ -31,11 +31,16 @@
         </div>
     </div>
 
-    <div class="grid grid-cols-2 xl:grid-cols-5 gap-3 sm:gap-4">
+    <div class="grid grid-cols-2 xl:grid-cols-6 gap-3 sm:gap-4">
         <div class="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-sm">
-            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Ordens hoje</p>
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Lavagens hoje</p>
             <p class="mt-2 text-3xl font-bold text-slate-950">{{ $totalOrdersToday }}</p>
             <p class="mt-1 text-xs text-slate-500">{{ $totalOrdersMonth }} no mês</p>
+        </div>
+        <div class="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-sm">
+            <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Vendas PDV hoje</p>
+            <p class="mt-2 text-3xl font-bold text-slate-950">{{ $salesToday }}</p>
+            <p class="mt-1 text-xs text-slate-500">{{ $salesMonth }} no mês</p>
         </div>
         <div class="rounded-2xl bg-white border border-slate-200 p-4 sm:p-5 shadow-sm">
             <p class="text-xs font-semibold uppercase tracking-wide text-slate-400">Faturamento hoje</p>
@@ -85,7 +90,7 @@
                             <td class="px-5 py-4 font-mono text-sm font-bold text-blue-700">#{{ $order['code'] }}</td>
                             <td class="px-5 py-4">
                                 <p class="font-semibold text-sm text-slate-800">{{ $order['customer_name'] ?: 'Cliente não informado' }}</p>
-                                <p class="text-xs text-slate-500 mt-0.5">{{ $order['license_plate'] ?: 'Sem placa' }}</p>
+                                <p class="text-xs text-slate-500 mt-0.5">{{ $order['order_type'] === 'sale' ? 'Venda balcão · PDV' : ($order['license_plate'] ?: 'Sem placa') }}</p>
                             </td>
                             <td class="px-5 py-4"><span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold {{ $meta['class'] }}">{{ $meta['label'] }}</span></td>
                             <td class="px-5 py-4 text-right font-bold text-slate-900">R$ {{ number_format($order['total'], 2, ',', '.') }}</td>

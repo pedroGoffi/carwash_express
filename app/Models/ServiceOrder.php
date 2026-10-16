@@ -13,6 +13,7 @@ class ServiceOrder extends Model
     protected $fillable = [
         'company_id',
         'customer_name',
+        'order_type',
         'license_plate',
         'code',
         'customer_type',

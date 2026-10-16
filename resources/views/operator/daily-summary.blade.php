@@ -30,16 +30,21 @@
         </form>
     </div>
 
-    <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div class="grid sm:grid-cols-2 xl:grid-cols-5 gap-4">
         <article class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <p class="text-xs font-bold text-slate-500"><i class="fas fa-car-side text-blue-600 mr-2"></i>Ordens / veículos</p>
             <p class="text-3xl font-extrabold text-slate-900 mt-2 tabular-nums">{{ $summary['orders'] }}</p>
-            <p class="text-xs text-slate-500 mt-2">Ordens criadas nesta data, sem canceladas</p>
+            <p class="text-xs text-slate-500 mt-2">Somente lavagens, sem vendas PDV</p>
         </article>
         <article class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <p class="text-xs font-bold text-slate-500"><i class="fas fa-wallet text-emerald-600 mr-2"></i>Total recebido</p>
             <p class="text-3xl font-extrabold text-emerald-700 mt-2 tabular-nums">{{ $money($summary['received']) }}</p>
             <p class="text-xs text-slate-500 mt-2">Pagamentos registrados nesta data</p>
+        </article>
+        <article class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+            <p class="text-xs font-bold text-slate-500"><i class="fas fa-cash-register text-blue-600 mr-2"></i>Vendas balcão · PDV</p>
+            <p class="text-3xl font-extrabold text-slate-900 mt-2 tabular-nums">{{ $summary['sales']['orders'] }}</p>
+            <p class="text-sm font-bold text-blue-700 mt-2">{{ $money($summary['sales']['amount']) }} em vendas</p>
         </article>
         <article class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
             <p class="text-xs font-bold text-slate-500"><i class="fas fa-bottle-water text-amber-600 mr-2"></i>Bebidas vendidas</p>

@@ -33,7 +33,7 @@
                         <a href="{{ route('operator.orders.index') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl {{ request()->routeIs('operator.orders.index') || request()->routeIs('operator.orders.status') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-blue-700' }}"><i class="fas fa-rectangle-list w-5 text-center"></i><span class="font-semibold">Ordens</span></a>
                         @endif
                         @if(Route::has('operator.orders.create'))
-                        <a href="{{ route('operator.orders.create') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl {{ request()->routeIs('operator.orders.create') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-blue-700' }}"><i class="fas fa-plus w-5 text-center"></i><span class="font-semibold">Nova ordem</span></a>
+                        <a href="{{ route('operator.orders.create') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl {{ request()->routeIs('operator.orders.create') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-blue-700' }}"><i class="fas fa-plus w-5 text-center"></i><span class="font-semibold">Novo lançamento · PDV + Lavagem</span></a>
                         @endif
                         <a href="{{ route('operator.daily-summary') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl {{ request()->routeIs('operator.daily-summary') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-blue-700' }}"><i class="fas fa-calendar-day w-5 text-center"></i><span class="font-semibold">Resumo diário</span></a>
                         @if(Route::has('operator.services.to-deliver'))
@@ -46,17 +46,21 @@
                 </div>
             @endif
 
-            @if(auth()->user()->isManager() || auth()->user()->isAdmin())
+            @if(auth()->user()->isManager() || auth()->user()->isAdmin() || auth()->user()->isOperator())
                 <div>
-                    <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-[.18em] text-slate-400">Gestão</p>
+                    <p class="px-3 mb-2 text-[11px] font-bold uppercase tracking-[.18em] text-slate-400">Gestão e lançamentos</p>
                     <div class="space-y-1">
+                        @if(!auth()->user()->isOperator())
                         <a href="{{ route('manager.dashboard') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl {{ request()->routeIs('manager.dashboard*') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-blue-700' }}"><i class="fas fa-chart-pie w-5 text-center"></i><span class="font-semibold">Dashboard</span></a>
+                        @endif
                         <a href="{{ route('manager.products.index') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl {{ request()->routeIs('manager.products.*') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-blue-700' }}"><i class="fas fa-box w-5 text-center"></i><span class="font-semibold">Produtos</span></a>
                         <a href="{{ route('manager.users.index') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl {{ request()->routeIs('manager.users.*') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-blue-700' }}"><i class="fas fa-users w-5 text-center"></i><span class="font-semibold">Equipe</span></a>
                         <a href="{{ route('manager.payroll.index') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl {{ request()->routeIs('manager.payroll.*') || request()->routeIs('manager.advances.*') || request()->routeIs('manager.consumptions.*') || request()->routeIs('manager.expenses.*') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-blue-700' }}"><i class="fas fa-wallet w-5 text-center"></i><span class="font-semibold">Folha & custos</span></a>
                         <a href="{{ route('manager.operating-expenses.index') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl {{ request()->routeIs('manager.operating-expenses.*') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-blue-700' }}"><i class="fas fa-file-invoice-dollar w-5 text-center"></i><span class="font-semibold">Custos operacionais</span></a>
-                        <a href="{{ route('manager.notes.index') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl {{ request()->routeIs('manager.notes.*') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-blue-700' }}"><i class="fas fa-note-sticky w-5 text-center"></i><span class="font-semibold">Anotações</span></a>
+                        @if(!auth()->user()->isOperator())
+                        <a href="{{ route('manager.notes.index') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl {{ request()->routeIs('manager.notes.*') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:text-blue-700' }}"><i class="fas fa-note-sticky w-5 text-center"></i><span class="font-semibold">Anotações</span></a>
                         <a href="{{ route('manager.reports.index') }}" class="flex items-center gap-3 px-3 py-3 rounded-xl {{ request()->routeIs('manager.reports.*') ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-blue-700' }}"><i class="fas fa-chart-line w-5 text-center"></i><span class="font-semibold">Relatórios</span></a>
+                        @endif
                     </div>
                 </div>
             @endif

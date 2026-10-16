@@ -22,11 +22,13 @@ class ServiceOrderController extends Controller
     {
         $companyId = auth()->user()->company_id;
         $status = $request->string('status')->toString();
+        $orderType = $request->string('order_type')->toString();
         $search = trim($request->string('q')->toString());
 
         $orders = ServiceOrder::query()
             ->with(['products:id,name', 'payments:id,service_order_id,method,amount'])
             ->where('company_id', $companyId)
+            ->when(in_array($orderType, ['service', 'sale'], true), fn ($q) => $q->where('order_type', $orderType))
             ->when($status && in_array($status, array_column(ServiceOrderStatus::cases(), 'value'), true), fn ($q) => $q->where('status', $status))
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($qq) use ($search) {
@@ -40,11 +42,12 @@ class ServiceOrderController extends Controller
             ->withQueryString();
 
         $counts = ServiceOrder::where('company_id', $companyId)
+            ->when(in_array($orderType, ['service', 'sale'], true), fn ($q) => $q->where('order_type', $orderType))
             ->selectRaw('status, count(*) as total')
             ->groupBy('status')
             ->pluck('total', 'status');
 
-        return view('operator.orders-index', compact('orders', 'counts', 'status', 'search'));
+        return view('operator.orders-index', compact('orders', 'counts', 'status', 'orderType', 'search'));
     }
 
     public function create()
@@ -57,9 +60,7 @@ class ServiceOrderController extends Controller
             ->values();
         $products = (clone $base)->whereIn('type', ['drink', 'snack', 'other'])->orderBy('type')->orderBy('name')->get();
 
-        $todaySummary = app(TodayOrderSummaryService::class)->forCompany((int) $companyId);
-
-        return view('operator.create-order', compact('washes', 'products', 'todaySummary'));
+        return view('operator.create-order', compact('washes', 'products'));
     }
 
     public function dailySummary(Request $request, TodayOrderSummaryService $summary)
@@ -81,18 +82,20 @@ class ServiceOrderController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'order_type' => 'sometimes|in:service,sale', // Compatibilidade; a classificação é inferida dos itens.
             'customer_type' => 'required|in:pf,pj',
             'customer_name' => 'nullable|string|max:255',
             'company_name' => 'nullable|string|max:255',
             'company_document' => 'nullable|string|max:18',
             'contact_name' => 'nullable|string|max:255',
-            'license_plate' => 'required|string|max:20',
-            'vehicle_type' => 'required|in:normal,suv,pickup',
-            'initial_status' => ['required', Rule::in([ServiceOrderStatus::WAITING->value, ServiceOrderStatus::FINISHED->value])],
+            'license_plate' => ['nullable', 'string', 'max:20'],
+            'vehicle_type' => ['nullable', Rule::in(['normal','suv','pickup'])],
+            'initial_status' => ['nullable', Rule::in([ServiceOrderStatus::WAITING->value, ServiceOrderStatus::FINISHED->value])],
             'items' => 'required|array|min:1|max:150',
             'items.*' => 'required|integer|min:1|max:100',
-            'primary_wash_id' => 'required|integer|min:1',
+            'primary_wash_id' => 'nullable|integer|min:1',
             'payments' => 'nullable|string',
+            'after_save' => 'sometimes|in:new,index',
         ]);
 
         // A interface envia um mapa produto=>quantidade; todos os valores e preços
@@ -116,7 +119,22 @@ class ServiceOrderController extends Controller
         if ($products->count() !== count($quantities)) {
             throw ValidationException::withMessages(['items' => 'Um ou mais produtos não estão disponíveis nesta empresa.']);
         }
-        $primaryWashId = (int) $validated['primary_wash_id'];
+        // A tela é única: sem lavagem => PDV; havendo lavagem => serviço.
+        // Não confiar no campo order_type recebido (pode ser manipulado ou desatualizado).
+        $isSale = !$products->contains(fn (Product $product) => $product->type === ProductType::WASH);
+        if (!$isSale) {
+            if (trim((string) ($validated['license_plate'] ?? '')) === '') {
+                throw ValidationException::withMessages(['license_plate' => 'Informe a placa para registrar uma lavagem.']);
+            }
+            if (empty($validated['vehicle_type'])) {
+                throw ValidationException::withMessages(['vehicle_type' => 'Selecione o tipo de veículo para a lavagem.']);
+            }
+            if (empty($validated['initial_status'])) {
+                throw ValidationException::withMessages(['initial_status' => 'Selecione a situação do veículo.']);
+            }
+        }
+        $vehicleType = $isSale ? 'normal' : $validated['vehicle_type'];
+        $primaryWashId = $isSale ? null : (int) ($validated['primary_wash_id'] ?? 0);
         $primaryWashCount = 0;
         $pivot = [];
         $totalCents = 0;
@@ -130,9 +148,9 @@ class ServiceOrderController extends Controller
             } else if ($id === $primaryWashId) {
                 throw ValidationException::withMessages(['primary_wash_id' => 'O serviço principal deve ser uma lavagem.']);
             }
-            $unitCents = (int) round($product->getPriceForVehicleType($validated['vehicle_type']) * 100);
+            $unitCents = (int) round($product->getPriceForVehicleType($vehicleType) * 100);
             if ($unitCents <= 0) {
-                throw ValidationException::withMessages(['items' => "O produto {$product->name} não possui preço válido para o veículo selecionado."]);
+                throw ValidationException::withMessages(['items' => "O produto {$product->name} não possui preço de venda válido."]);
             }
             $lineCents = $unitCents * $qty;
             $totalCents += $lineCents;
@@ -140,10 +158,10 @@ class ServiceOrderController extends Controller
                 'quantity' => $qty,
                 'unit_price' => $unitCents / 100,
                 'total_price' => $lineCents / 100,
-                'is_primary_wash' => $id === $primaryWashId,
+                'is_primary_wash' => !$isSale && $id === $primaryWashId,
             ];
         }
-        if ($primaryWashCount !== 1) {
+        if (!$isSale && $primaryWashCount !== 1) {
             throw ValidationException::withMessages(['primary_wash_id' => 'Selecione uma lavagem principal válida da empresa.']);
         }
 
@@ -176,21 +194,24 @@ class ServiceOrderController extends Controller
             : ($validated['customer_name'] ?? null);
         $customerDocument = $validated['customer_type'] === 'pj' ? ($validated['company_document'] ?? null) : null;
         $contactName = $validated['customer_type'] === 'pj' ? ($validated['contact_name'] ?? null) : null;
-        $initialStatus = ServiceOrderStatus::from($validated['initial_status']);
+        // Venda balcão sai concluída sem passar pela fila de veículos/chaves.
+        $initialStatus = $isSale ? ServiceOrderStatus::DELIVERED : ServiceOrderStatus::from($validated['initial_status']);
 
-        $order = DB::transaction(function () use ($validated, $companyId, $customerName, $customerDocument, $contactName, $initialStatus, $pivot, $totalCents, $payments) {
+        $order = DB::transaction(function () use ($validated, $companyId, $customerName, $customerDocument, $contactName, $initialStatus, $isSale, $vehicleType, $pivot, $totalCents, $payments) {
             $order = ServiceOrder::create([
                 'company_id' => $companyId,
+                'order_type' => $isSale ? 'sale' : 'service',
                 'customer_name' => $customerName,
                 'customer_type' => $validated['customer_type'],
                 'customer_document' => $customerDocument,
                 'contact_name' => $contactName,
-                'license_plate' => strtoupper(trim($validated['license_plate'])),
+                'license_plate' => $isSale ? null : strtoupper(trim($validated['license_plate'])),
                 'code' => ServiceOrder::generateCode(),
                 'status' => $initialStatus,
                 'queued_at' => null,
-                'finished_at' => $initialStatus === ServiceOrderStatus::FINISHED ? now() : null,
-                'vehicle_type' => $validated['vehicle_type'],
+                'finished_at' => in_array($initialStatus, [ServiceOrderStatus::FINISHED, ServiceOrderStatus::DELIVERED], true) ? now() : null,
+                'delivered_at' => $isSale ? now() : null,
+                'vehicle_type' => $vehicleType,
                 'total' => $totalCents / 100,
             ]);
             $order->products()->attach($pivot);
@@ -207,7 +228,13 @@ class ServiceOrderController extends Controller
             return $order;
         });
 
-        return redirect()->route('operator.orders.index')->with('success', "Ordem {$order->code} criada com sucesso.");
+        $message = $isSale ? "Venda de balcão {$order->code} registrada com sucesso." : "Ordem {$order->code} criada com sucesso.";
+        if (($validated['after_save'] ?? 'index') === 'new') {
+            return redirect()->route('operator.orders.create')
+                ->with('success', $message)
+                ->with('created_order_id', $order->id);
+        }
+        return redirect()->route('operator.orders.index')->with('success', $message);
     }
 
     public function updateStatus(Request $request, ServiceOrder $order)
@@ -281,6 +308,7 @@ class ServiceOrderController extends Controller
         $finishedOrders = ServiceOrder::with(['products:id,name', 'payments:id,service_order_id,method,amount'])
             ->where('company_id', auth()->user()->company_id)
             ->where('status', ServiceOrderStatus::FINISHED)
+            ->where('order_type', 'service')
             ->orderByDesc('finished_at')->paginate(18);
         return view('operator.services-to-deliver', compact('finishedOrders'));
     }

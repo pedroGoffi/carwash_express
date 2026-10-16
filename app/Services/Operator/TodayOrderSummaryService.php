@@ -21,8 +21,10 @@ class TodayOrderSummaryService
             ->where('status', '!=', 'cancelled')
             ->whereBetween('created_at', [$start, $end]);
 
+        $saleSummary = (clone $orders)->where('order_type', 'sale')
+            ->selectRaw('COUNT(*) AS quantity, COALESCE(SUM(total), 0) AS amount')->first();
         $vehicles = ['normal' => 0, 'suv' => 0, 'pickup' => 0];
-        foreach ((clone $orders)->select('vehicle_type')->selectRaw('COUNT(*) AS quantity')->groupBy('vehicle_type')->get() as $row) {
+        foreach ((clone $orders)->where('order_type', 'service')->select('vehicle_type')->selectRaw('COUNT(*) AS quantity')->groupBy('vehicle_type')->get() as $row) {
             if (array_key_exists($row->vehicle_type, $vehicles)) $vehicles[$row->vehicle_type] = (int) $row->quantity;
         }
 
@@ -71,7 +73,7 @@ class TodayOrderSummaryService
         // contada uma única vez por OS; lavagens extras ficam em outro conjunto.
         // Os valores são vendas dos itens registrados no dia, NÃO recebimentos.
         $washByVehicle = static function (bool $primary) use ($itemQuery): array {
-            $rows = $itemQuery('wash')
+            $rows = $itemQuery('wash')->where('so.order_type', 'service')
                 ->where('item.is_primary_wash', $primary)
                 ->select('product.id', 'product.name', 'so.vehicle_type')
                 ->selectRaw('SUM(item.quantity) AS quantity, SUM(item.total_price) AS amount')
@@ -124,6 +126,7 @@ class TodayOrderSummaryService
             'date' => $day->format('d/m/Y'),
             'date_iso' => $day->format('Y-m-d'),
             'orders' => array_sum($vehicles),
+            'sales' => ['orders' => (int) $saleSummary->quantity, 'amount' => round((float) $saleSummary->amount, 2)],
             'vehicles' => $vehicles,
             'received' => round($receivedTotal, 2),
             'payments' => $payments,

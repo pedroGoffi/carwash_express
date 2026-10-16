@@ -32,45 +32,31 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 });
 
-// ========== ROTAS DO GERENTE ==========
+// Painel gerencial e relatórios continuam restritos ao gestor/administrador.
 Route::middleware(['auth', 'role:admin,manager'])->prefix('manager')->name('manager.')->group(function () {
-    
-    // Dashboard
     Route::get('/dashboard', [ManagerDashboardController::class, 'index'])->name('dashboard');
     Route::get('/dashboard/analytics', [ManagerDashboardController::class, 'analytics'])->name('dashboard.analytics');
-    // Produtos (CRUD completo)
-    Route::resource('products', ProductController::class)->except(['show']);
-    
-    // Usuários (CRUD completo)
-    Route::resource('users', UserController::class)->except(['show']);
-    
-    // Relatórios
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
     Route::get('/reports/data', [ReportController::class, 'getData'])->name('reports.data');
+    Route::post('/payroll/close-period', [PayrollController::class, 'closePeriod'])->name('payroll.close-period');
+    Route::delete('/notes/{note}', [ManagerNoteController::class, 'destroy'])->name('notes.destroy');
+    Route::post('/notes/{note}/pin', [ManagerNoteController::class, 'togglePin'])->name('notes.pin');
+});
 
-    // Custos operacionais, separados da folha de pagamento.
+// Áreas operacionais compartilhadas. A operadora pode cadastrar produtos e equipe,
+// consultar folha/custos e fazer/remover lançamentos de vales, consumos e despesas.
+Route::middleware(['auth', 'role:admin,manager,operator'])->prefix('manager')->name('manager.')->group(function () {
+    Route::resource('products', ProductController::class)->except(['show']);
+    Route::resource('users', UserController::class)->except(['show']);
     Route::get('/operating-expenses', [OperatingExpenseController::class, 'index'])->name('operating-expenses.index');
     Route::post('/operating-expenses', [OperatingExpenseController::class, 'store'])->name('operating-expenses.store');
     Route::delete('/operating-expenses/{expense}', [OperatingExpenseController::class, 'destroy'])->name('operating-expenses.destroy');
-
-    // Adiantamentos
     Route::resource('advances', AdvanceController::class)->except(['show', 'create', 'edit', 'update']);
-
-    // Consumos
     Route::resource('consumptions', ConsumptionController::class)->except(['show', 'create', 'edit', 'update']);
-    
-    // Folha de Pagamento
     Route::get('/payroll', [PayrollController::class, 'index'])->name('payroll.index');
-    // Remuneracao é editada apenas no cadastro do colaborador.
     Route::post('/expenses', [EmployeeExpenseController::class, 'store'])->name('expenses.store');
     Route::delete('/expenses/{expense}', [EmployeeExpenseController::class, 'destroy'])->name('expenses.destroy');
-    Route::post('/payroll/close-period', [PayrollController::class, 'closePeriod'])->name('payroll.close-period');
-
-    
-    // Anotações
     Route::get('/notes', [ManagerNoteController::class, 'index'])->name('notes.index');
-    Route::delete('/notes/{note}', [ManagerNoteController::class, 'destroy'])->name('notes.destroy');
-    Route::post('/notes/{note}/pin', [ManagerNoteController::class, 'togglePin'])->name('notes.pin');
 });
 
 // ========== ROTAS DO OPERADOR ==========

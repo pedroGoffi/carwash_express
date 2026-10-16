@@ -1,8 +1,8 @@
 @extends('layouts.app')
 
-@section('title', 'Nova ordem')
-@section('header', 'Nova ordem')
-@section('subheader', 'Venda rápida · serviços, produtos e pagamento em uma tela')
+@section('title', 'Lançamento rápido')
+@section('header', 'Lançamento rápido')
+@section('subheader', 'Lavagens, bebidas e pagamentos juntos, sem alternar modos')
 
 @section('content')
 @php
@@ -74,114 +74,29 @@
     <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
         <div>
             <p class="text-xs font-bold uppercase tracking-widest text-blue-600">Operação / Ordens de serviço</p>
-            <h2 class="text-2xl font-extrabold tracking-tight text-slate-900 mt-1">Registrar atendimento</h2>
-            <p class="text-sm text-slate-500 mt-1">Preencha o essencial, escolha a lavagem e adicione produtos com um toque.</p>
+            <h2 class="text-2xl font-extrabold tracking-tight text-slate-900 mt-1">Novo lançamento</h2>
+            <p class="text-sm text-slate-500 mt-1">Adicione bebidas, lavagens ou ambos. O sistema identifica automaticamente a operação.</p>
         </div>
-        <a href="{{ route('operator.orders.index') }}" class="erp-small-button inline-flex items-center gap-2"><i class="fas fa-list"></i> Consultar ordens</a>
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ route('operator.daily-summary') }}" class="erp-small-button inline-flex items-center gap-2"><i class="fas fa-calendar-day"></i> Resumo diário (D-1)</a>
+            <a href="{{ route('operator.orders.index') }}" class="erp-small-button inline-flex items-center gap-2"><i class="fas fa-list"></i> Consultar ordens</a>
+        </div>
     </div>
+    <nav aria-label="Atalhos do lançamento" class="flex flex-wrap items-center gap-2 mb-5">
+        <a href="#title-products" class="erp-small-button inline-flex items-center gap-2"><i class="fas fa-bottle-water text-blue-600"></i> Bebidas e produtos</a>
+        <a href="#title-washes" class="erp-small-button inline-flex items-center gap-2"><i class="fas fa-car-side text-blue-600"></i> Lavagens</a>
+        <a href="#title-client" class="erp-small-button inline-flex items-center gap-2"><i class="fas fa-user text-blue-600"></i> Cliente / placa</a>
+        <a href="#title-payment" class="erp-small-button inline-flex items-center gap-2"><i class="fas fa-wallet text-blue-600"></i> Pagamento</a>
+    </nav>
 
-    {{-- Resumo operacional do dia: valores do banco, exclusivos da empresa autenticada. --}}
-    <section class="mb-5" aria-labelledby="daily-summary-title" id="today-summary"
-             data-summary-url="{{ route('operator.orders.today-summary') }}">
-        <div class="flex flex-wrap items-end justify-between gap-2 mb-3">
-            <div>
-                <h3 class="text-sm font-extrabold text-slate-900" id="daily-summary-title">Resumo da operação de hoje</h3>
-                <p class="text-xs text-slate-500">{{ $todaySummary['date'] }} · números da sua empresa · atualiza automaticamente</p>
-            </div>
-            <a href="{{ route('operator.daily-summary') }}" class="erp-small-button inline-flex items-center gap-2"><i class="fas fa-calendar-days"></i> Histórico por data (D-1)</a>
-            <span id="today-summary-updated" class="text-[11px] text-slate-400" role="status" aria-live="polite">Dados atualizados ao abrir</span>
+    @if(session('success'))
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3 border border-emerald-200 rounded-xl bg-emerald-50 p-4 text-emerald-900" role="status">
+            <p class="font-semibold text-sm"><i class="fas fa-check-circle mr-2"></i>{{ session('success') }}</p>
+            @if(session('created_order_id'))
+                <a target="_blank" rel="noopener" class="erp-small-button" href="{{ route('operator.orders.receipt', session('created_order_id')) }}"><i class="fas fa-print mr-1"></i> Abrir comprovante</a>
+            @endif
         </div>
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
-            <article class="erp-kpi">
-                <p class="erp-kpi-label"><i class="fas fa-car-side mr-1 text-blue-500"></i> Lavagens / ordens</p>
-                <p class="erp-kpi-value" data-today="orders">{{ $todaySummary['orders'] }}</p>
-                <p class="text-[11px] text-slate-500 mt-1">Ordens criadas hoje (exceto canceladas)</p>
-            </article>
-            <article class="erp-kpi">
-                <p class="erp-kpi-label"><i class="fas fa-wallet mr-1 text-emerald-600"></i> Recebido hoje</p>
-                <p class="erp-kpi-value text-emerald-700" data-today="received">R$ {{ number_format($todaySummary['received'], 2, ',', '.') }}</p>
-                <p class="text-[11px] text-slate-500 mt-1">Pagamentos lançados hoje, inclusive de OS anteriores</p>
-            </article>
-            <article class="erp-kpi">
-                <p class="erp-kpi-label"><i class="fas fa-bottle-water mr-1 text-amber-600"></i> Bebidas vendidas</p>
-                <p class="erp-kpi-value" data-today="drinks.quantity">{{ $todaySummary['drinks']['quantity'] }}</p>
-                <p class="text-xs text-slate-500" data-today="drinks.amount">R$ {{ number_format($todaySummary['drinks']['amount'], 2, ',', '.') }}</p>
-            </article>
-            <article class="erp-kpi">
-                <p class="erp-kpi-label"><i class="fas fa-soap mr-1 text-violet-600"></i> Serviços extras de lavagem</p>
-                <p class="erp-kpi-value" data-today="wash_addons.quantity">{{ $todaySummary['wash_addons']['quantity'] }}</p>
-                <p class="text-xs text-slate-500" data-today="wash_addons.amount">R$ {{ number_format($todaySummary['wash_addons']['amount'], 2, ',', '.') }}</p>
-            </article>
-        </div>
-        {{-- Lavagens principais por serviço x veículo; adicionais não duplicam a OS. --}}
-        <div class="erp-panel mb-3 overflow-hidden">
-            <div class="px-4 py-3 border-b border-slate-100 flex flex-wrap justify-between items-center gap-2">
-                <div><h4 class="text-xs font-extrabold text-slate-800">Lavagens por tipo e veículo</h4>
-                <p class="text-[11px] text-slate-500">Lavagem principal · quantidade por carro, SUV e picape · vendas do dia</p></div>
-                <strong class="text-xs text-blue-700" data-today="wash_types.total">{{ $todaySummary['wash_types']['quantity'] }} lavagens · R$ {{ number_format($todaySummary['wash_types']['amount'], 2, ',', '.') }}</strong>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full min-w-[480px] text-xs text-slate-700">
-                    <thead class="bg-slate-50 text-slate-500"><tr>
-                        <th class="text-left py-2 px-4">Tipo de lavagem</th>
-                        <th class="text-center py-2 px-2">Carros</th><th class="text-center py-2 px-2">SUVs</th><th class="text-center py-2 px-2">Picapes</th>
-                        <th class="text-center py-2 px-2">Total</th><th class="text-right py-2 px-4">Valor</th>
-                    </tr></thead>
-                    <tbody id="today-wash-type-rows" class="divide-y divide-slate-100">
-                        @forelse($todaySummary['wash_types']['items'] as $wash)
-                        <tr><td class="py-2 px-4 font-semibold">{{ $wash['name'] }}</td>
-                            @foreach(['normal', 'suv', 'pickup'] as $type)
-                            <td class="text-center py-2 px-2 tabular-nums">{{ $wash['vehicles'][$type] }}</td>
-                            @endforeach
-                            <td class="text-center py-2 px-2 font-bold tabular-nums">{{ $wash['quantity'] }}</td>
-                            <td class="text-right py-2 px-4 tabular-nums">R$ {{ number_format($wash['amount'], 2, ',', '.') }}</td>
-                        </tr>
-                        @empty
-                        <tr><td colspan="6" class="py-4 px-4 text-center text-slate-400">Nenhuma lavagem principal registrada hoje.</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <div class="grid md:grid-cols-3 gap-3">
-            <div class="erp-panel p-4">
-                <h4 class="text-xs font-extrabold text-slate-700 mb-3">Veículos atendidos hoje</h4>
-                <div class="erp-detail-list">
-                    @foreach(['normal' => 'Carros', 'suv' => 'SUVs', 'pickup' => 'Picapes'] as $key => $label)
-                    <div class="erp-detail-line"><span>{{ $label }}</span><strong data-today="vehicles.{{ $key }}">{{ $todaySummary['vehicles'][$key] }}</strong></div>
-                    @endforeach
-                </div>
-            </div>
-            <div class="erp-panel p-4">
-                <h4 class="text-xs font-extrabold text-slate-700 mb-3">Recebimentos por modalidade</h4>
-                <div class="erp-detail-list">
-                    @foreach(['pix' => 'Pix', 'cash' => 'Dinheiro', 'credit' => 'Crédito', 'debit' => 'Débito'] as $key => $label)
-                    <div class="erp-detail-line"><span>{{ $label }}</span><strong data-today="payments.{{ $key }}.amount">R$ {{ number_format($todaySummary['payments'][$key]['amount'], 2, ',', '.') }}</strong></div>
-                    @endforeach
-                </div>
-            </div>
-            <div class="erp-panel p-4">
-                <h4 class="text-xs font-extrabold text-slate-700 mb-3">Adicionais vendidos hoje</h4>
-                <div class="erp-detail-list">
-                    <div class="erp-detail-line"><span>Bebidas</span><strong data-today="drinks.amount.detail">{{ $todaySummary['drinks']['quantity'] }} un. · R$ {{ number_format($todaySummary['drinks']['amount'], 2, ',', '.') }}</strong></div>
-                    <div class="erp-detail-line"><span>Lavagens extras</span><strong data-today="wash_addons.amount.detail">{{ $todaySummary['wash_addons']['quantity'] }} un. · R$ {{ number_format($todaySummary['wash_addons']['amount'], 2, ',', '.') }}</strong></div>
-                </div>
-                <div class="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-3">
-                    <div><p class="text-[11px] font-bold text-slate-500 mb-2">Bebidas mais vendidas</p><div id="today-drink-details" class="space-y-1.5">
-                        @forelse($todaySummary['drinks']['items'] as $item)
-                        <p class="text-[11px] text-slate-600">{{ $item['quantity'] }}× {{ $item['name'] }}</p>
-                        @empty <p class="text-[11px] text-slate-400">Nenhuma hoje</p> @endforelse
-                    </div></div>
-                    <div><p class="text-[11px] font-bold text-slate-500 mb-2">Lavagens adicionais</p><div id="today-wash-details" class="space-y-1.5">
-                        @forelse($todaySummary['wash_addons']['items'] as $item)
-                        <p class="text-[11px] text-slate-600">{{ $item['quantity'] }}× {{ $item['name'] }}</p>
-                        @empty <p class="text-[11px] text-slate-400">Nenhuma hoje</p> @endforelse
-                    </div></div>
-                </div>
-                <p class="text-[11px] text-slate-400 mt-3">Adicionais: valor das vendas registradas nas ordens de hoje, não necessariamente recebido.</p>
-            </div>
-        </div>
-    </section>
+    @endif
 
     @if($errors->any())
         <div class="erp-error mb-5" role="alert">
@@ -193,78 +108,12 @@
 
     <form action="{{ route('operator.orders.store') }}" method="POST" id="orderForm" novalidate>
         @csrf
+        {{-- Tipo inferido exclusivamente pelos itens do carrinho, inclusive no servidor. --}}
+        <input type="hidden" name="order_type" id="order_type" value="sale">
         <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_355px] gap-5 items-start">
             <div class="space-y-5 min-w-0">
-                <section class="erp-panel" aria-labelledby="title-client">
-                    <div class="erp-panel-head"><span class="erp-step">01</span><div><h3 class="erp-section-title" id="title-client">Cliente e veículo</h3><p class="erp-hint">Placa obrigatória · identificação do cliente opcional</p></div></div>
-                    <div class="p-4 sm:p-5 space-y-4">
-                        <div class="grid sm:grid-cols-[minmax(0,1fr)_minmax(180px,.75fr)] gap-4">
-                            <div>
-                                <label class="erp-label" for="license_plate">Placa do veículo <span class="text-red-600">*</span></label>
-                                <input id="license_plate" name="license_plate" type="text" maxlength="20" value="{{ old('license_plate') }}" placeholder="ABC1D23" class="erp-input font-bold uppercase tracking-wider" required autocomplete="off" autofocus>
-                            </div>
-                            <div>
-                                <span class="erp-label">Tipo de cliente</span>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <button type="button" data-customer="pf" class="erp-choice" aria-pressed="false"><i class="far fa-user"></i> Pessoa física</button>
-                                    <button type="button" data-customer="pj" class="erp-choice" aria-pressed="false"><i class="far fa-building"></i> Empresa</button>
-                                </div>
-                                <input type="hidden" name="customer_type" id="customer_type" value="{{ $customerType }}">
-                            </div>
-                        </div>
-                        <div id="pf-fields"><label class="erp-label" for="customer_name">Nome do cliente <span class="font-normal text-slate-400">(opcional)</span></label><input class="erp-input" id="customer_name" name="customer_name" maxlength="255" value="{{ old('customer_name') }}" placeholder="Nome para identificação"></div>
-                        <div id="pj-fields" class="grid sm:grid-cols-3 gap-3" hidden>
-                            <div><label class="erp-label" for="company_name">Razão social</label><input class="erp-input" id="company_name" name="company_name" value="{{ old('company_name') }}" maxlength="255" placeholder="Nome da empresa"></div>
-                            <div><label class="erp-label" for="company_document">CNPJ</label><input class="erp-input" id="company_document" name="company_document" value="{{ old('company_document') }}" maxlength="18" placeholder="00.000.000/0000-00"></div>
-                            <div><label class="erp-label" for="contact_name">Contato</label><input class="erp-input" id="contact_name" name="contact_name" value="{{ old('contact_name') }}" maxlength="255" placeholder="Responsável"></div>
-                        </div>
-                        <div>
-                            <span class="erp-label">Categoria do veículo</span>
-                            <div class="grid grid-cols-3 gap-2" id="vehicle-options">
-                                <button type="button" class="erp-choice" data-vehicle="normal" aria-pressed="false"><i class="fas fa-car-side text-slate-400"></i> Carro</button>
-                                <button type="button" class="erp-choice" data-vehicle="suv" aria-pressed="false"><i class="fas fa-car text-slate-400"></i> SUV</button>
-                                <button type="button" class="erp-choice" data-vehicle="pickup" aria-pressed="false"><i class="fas fa-truck-pickup text-slate-400"></i> Picape</button>
-                            </div>
-                            <input type="hidden" id="vehicle_type" name="vehicle_type" value="{{ $vehicleType }}">
-                        </div>
-                    </div>
-                </section>
-
-                <section class="erp-panel" aria-labelledby="title-washes">
-                    <div class="erp-panel-head"><span class="erp-step">02</span><div class="flex-1"><h3 class="erp-section-title" id="title-washes">Lavagem principal</h3><p class="erp-hint">Escolha uma lavagem principal; outros serviços poderão ser adicionados abaixo</p></div><span class="text-xs font-semibold text-slate-400">1 principal</span></div>
-                    <div class="p-4 sm:p-5 grid sm:grid-cols-2 gap-3" id="wash-options">
-                        @forelse($washes as $wash)
-                        <button type="button" data-wash="{{ $wash->id }}" class="erp-wash" aria-pressed="false">
-                            <span class="wash-indicator"><i class="fas fa-check text-[10px]"></i></span>
-                            <span class="flex-1 min-w-0"><span class="block font-bold text-sm text-slate-800 truncate">{{ $wash->name }}</span><span class="block text-xs text-slate-500 mt-1">Lavagem</span></span>
-                            <span class="font-extrabold text-blue-700 text-sm whitespace-nowrap" data-price-for="{{ $wash->id }}">—</span>
-                        </button>
-                        @empty
-                        <p class="text-sm text-amber-700 sm:col-span-2">Nenhum serviço de lavagem ativo. Cadastre um produto do tipo lavagem antes de criar ordens.</p>
-                        @endforelse
-                    </div>
-                    <p id="wash-options-empty" hidden class="text-sm text-amber-700 px-5 pb-4">Nenhuma lavagem com preço maior que zero para este tipo de veículo. Cadastre o preço em Produtos.</p>
-                    <input type="hidden" name="primary_wash_id" id="primary_wash_id" value="{{ $primaryWashId }}">
-                </section>
-
-                <section class="erp-panel" aria-labelledby="title-extra-washes">
-                    <div class="erp-panel-head"><span class="erp-step"><i class="fas fa-sparkles"></i></span><div class="flex-1"><h3 class="erp-section-title" id="title-extra-washes">Serviços adicionais de lavagem</h3><p class="erp-hint">Inclua higienização, cera e outros serviços cadastrados como lavagem, sem substituir a principal</p></div><span class="text-xs font-semibold text-slate-400">Opcional</span></div>
-                    <div class="p-4 sm:p-5 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                        @foreach($washes as $wash)
-                        <button type="button" class="erp-wash-addon" data-extra-wash="{{ $wash->id }}" aria-pressed="false">
-                            <span class="flex items-center justify-between gap-2">
-                                <span class="text-sm font-bold truncate">{{ $wash->name }}</span>
-                                <i class="fas fa-plus text-blue-600 text-sm" aria-hidden="true"></i>
-                            </span>
-                            <span class="block mt-2 text-xs font-bold text-blue-700" data-price-for="{{ $wash->id }}">—</span>
-                        </button>
-                        @endforeach
-                    </div>
-                    <p class="px-5 pb-4 text-[11px] text-slate-500">A lavagem principal não pode ser lançada novamente como adicional na mesma ordem. Cada serviço adicional é registrado separadamente.</p>
-                </section>
-
                 <section class="erp-panel" aria-labelledby="title-products">
-                    <div class="erp-panel-head"><span class="erp-step">03</span><div class="flex-1"><h3 class="erp-section-title" id="title-products">Bebidas, lanches e adicionais</h3><p class="erp-hint">Aumente a quantidade pelo botão + · até 100 unidades por item</p></div><span class="hidden sm:inline text-xs font-semibold text-slate-400">Opcional</span></div>
+                    <div class="erp-panel-head"><span class="erp-step">01</span><div class="flex-1"><h3 class="erp-section-title scroll-mt-28" id="title-products">Bebidas e produtos</h3><p class="erp-hint">Toque em + para vender no balcão ou adicionar à lavagem</p></div><span class="hidden sm:inline text-xs font-semibold text-slate-400">Opcional</span></div>
                     <div class="p-4 sm:p-5">
                         <div class="flex flex-wrap gap-2 mb-4">
                             <div class="relative flex-1 min-w-[180px]"><i class="fas fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-sm"></i><input id="product-search" type="search" autocomplete="off" class="erp-input !pl-9" placeholder="Buscar bebida ou produto..." aria-label="Buscar produto"></div>
@@ -285,7 +134,73 @@
                         <p class="text-sm text-slate-400 text-center hidden py-8" id="products-empty">Nenhum produto encontrado para a busca.</p>
                     </div>
                 </section>
-                <section class="erp-panel" aria-labelledby="title-status">
+                <section class="erp-panel" aria-labelledby="title-washes">
+                    <div class="erp-panel-head"><span class="erp-step">02</span><div class="flex-1"><h3 class="erp-section-title scroll-mt-28" id="title-washes">Lavagem principal</h3><p class="erp-hint">Opcional. Ao selecionar, solicitaremos a placa e liberaremos adicionais.</p></div><span class="text-xs font-semibold text-slate-400">0 ou 1 principal</span></div>
+                    <div class="px-4 sm:px-5 pt-4">
+                        <span class="erp-label">Categoria do veículo (para preços de lavagem)</span>
+                        <div class="grid grid-cols-3 gap-2" id="vehicle-options">
+                            <button type="button" class="erp-choice" data-vehicle="normal" aria-pressed="false"><i class="fas fa-car-side text-slate-400"></i> Carro</button>
+                            <button type="button" class="erp-choice" data-vehicle="suv" aria-pressed="false"><i class="fas fa-car text-slate-400"></i> SUV</button>
+                            <button type="button" class="erp-choice" data-vehicle="pickup" aria-pressed="false"><i class="fas fa-truck-pickup text-slate-400"></i> Picape</button>
+                        </div>
+                        <input type="hidden" id="vehicle_type" name="vehicle_type" value="{{ $vehicleType }}">
+                    </div>
+                    <div class="p-4 sm:p-5 grid sm:grid-cols-2 gap-3" id="wash-options">
+                        @forelse($washes as $wash)
+                        <button type="button" data-wash="{{ $wash->id }}" class="erp-wash" aria-pressed="false">
+                            <span class="wash-indicator"><i class="fas fa-check text-[10px]"></i></span>
+                            <span class="flex-1 min-w-0"><span class="block font-bold text-sm text-slate-800 truncate">{{ $wash->name }}</span><span class="block text-xs text-slate-500 mt-1">Lavagem</span></span>
+                            <span class="font-extrabold text-blue-700 text-sm whitespace-nowrap" data-price-for="{{ $wash->id }}">—</span>
+                        </button>
+                        @empty
+                        <p class="text-sm text-amber-700 sm:col-span-2">Nenhum serviço de lavagem ativo. Cadastre um produto do tipo lavagem antes de criar ordens.</p>
+                        @endforelse
+                    </div>
+                    <p class="px-5 pb-2 text-[11px] text-slate-500">Toque na lavagem novamente para removê-la. Nenhuma lavagem = venda de balcão, sem necessidade de placa.</p>
+                    <p id="wash-options-empty" hidden class="text-sm text-amber-700 px-5 pb-4">Nenhuma lavagem com preço maior que zero para este tipo de veículo. Cadastre o preço em Produtos.</p>
+                    <input type="hidden" name="primary_wash_id" id="primary_wash_id" value="{{ $primaryWashId }}">
+                </section>
+                <section class="erp-panel" aria-labelledby="title-client">
+                    <div class="erp-panel-head"><span class="erp-step">03</span><div><h3 class="erp-section-title scroll-mt-28" id="title-client">Cliente e veículo</h3><p class="erp-hint" id="client-hint">Identificação opcional no balcão; placa apenas para lavagens</p></div></div>
+                    <div class="p-4 sm:p-5 space-y-4">
+                        <div class="grid sm:grid-cols-[minmax(0,1fr)_minmax(180px,.75fr)] gap-4">
+                            <div data-requires-wash hidden>
+                                <label class="erp-label" for="license_plate">Placa do veículo <span class="text-red-600">*</span></label>
+                                <input id="license_plate" name="license_plate" type="text" maxlength="20" value="{{ old('license_plate') }}" placeholder="ABC1D23" class="erp-input font-bold uppercase tracking-wider" autocomplete="off">
+                            </div>
+                            <div>
+                                <span class="erp-label">Tipo de cliente</span>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button type="button" data-customer="pf" class="erp-choice" aria-pressed="false"><i class="far fa-user"></i> Pessoa física</button>
+                                    <button type="button" data-customer="pj" class="erp-choice" aria-pressed="false"><i class="far fa-building"></i> Empresa</button>
+                                </div>
+                                <input type="hidden" name="customer_type" id="customer_type" value="{{ $customerType }}">
+                            </div>
+                        </div>
+                        <div id="pf-fields"><label class="erp-label" for="customer_name">Nome do cliente <span class="font-normal text-slate-400">(opcional)</span></label><input class="erp-input" id="customer_name" name="customer_name" maxlength="255" value="{{ old('customer_name') }}" placeholder="Nome para identificação"></div>
+                        <div id="pj-fields" class="grid sm:grid-cols-3 gap-3" hidden>
+                            <div><label class="erp-label" for="company_name">Razão social</label><input class="erp-input" id="company_name" name="company_name" value="{{ old('company_name') }}" maxlength="255" placeholder="Nome da empresa"></div>
+                            <div><label class="erp-label" for="company_document">CNPJ</label><input class="erp-input" id="company_document" name="company_document" value="{{ old('company_document') }}" maxlength="18" placeholder="00.000.000/0000-00"></div>
+                            <div><label class="erp-label" for="contact_name">Contato</label><input class="erp-input" id="contact_name" name="contact_name" value="{{ old('contact_name') }}" maxlength="255" placeholder="Responsável"></div>
+                        </div>
+                    </div>
+                </section>
+                <section class="erp-panel" data-requires-wash hidden aria-labelledby="title-extra-washes">
+                    <div class="erp-panel-head"><span class="erp-step"><i class="fas fa-sparkles"></i></span><div class="flex-1"><h3 class="erp-section-title" id="title-extra-washes">Serviços adicionais de lavagem</h3><p class="erp-hint">Inclua higienização, cera e outros serviços cadastrados como lavagem, sem substituir a principal</p></div><span class="text-xs font-semibold text-slate-400">Opcional</span></div>
+                    <div class="p-4 sm:p-5 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        @foreach($washes as $wash)
+                        <button type="button" class="erp-wash-addon" data-extra-wash="{{ $wash->id }}" aria-pressed="false">
+                            <span class="flex items-center justify-between gap-2">
+                                <span class="text-sm font-bold truncate">{{ $wash->name }}</span>
+                                <i class="fas fa-plus text-blue-600 text-sm" aria-hidden="true"></i>
+                            </span>
+                            <span class="block mt-2 text-xs font-bold text-blue-700" data-price-for="{{ $wash->id }}">—</span>
+                        </button>
+                        @endforeach
+                    </div>
+                    <p class="px-5 pb-4 text-[11px] text-slate-500">A lavagem principal não pode ser lançada novamente como adicional na mesma ordem. Cada serviço adicional é registrado separadamente.</p>
+                </section>
+                <section class="erp-panel" data-requires-wash hidden aria-labelledby="title-status">
                     <div class="erp-panel-head"><span class="erp-step">04</span><div><h3 class="erp-section-title" id="title-status">Situação do veículo</h3><p class="erp-hint">Define a fila operacional e o controle das chaves</p></div></div>
                     <div class="p-4 sm:p-5 grid sm:grid-cols-2 gap-3">
                         <label class="cursor-pointer"><input class="peer sr-only" type="radio" name="initial_status" value="finished" {{ $initialStatus === 'finished' ? 'checked' : '' }}><span class="block p-4 border border-slate-200 rounded-xl peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-colors"><span class="block font-bold text-sm text-slate-900"><i class="fas fa-circle-check text-blue-600 mr-2"></i>Concluído</span><span class="block text-xs text-slate-500 mt-1">O veículo não ficará em espera</span></span></label>
@@ -298,7 +213,7 @@
                 <section class="erp-panel overflow-hidden">
                     <div class="erp-panel-head"><span class="erp-step"><i class="fas fa-receipt"></i></span><div><h3 class="erp-section-title" id="title-summary">Resumo da ordem</h3><p class="erp-hint">Atualização imediata, sem recarregar</p></div></div>
                     <div class="p-4 sm:p-5">
-                        <div id="summary-items" class="divide-y divide-slate-100 mb-4"><p class="text-sm text-slate-400 py-6 text-center">Escolha uma lavagem para começar.</p></div>
+                        <div id="summary-items" class="divide-y divide-slate-100 mb-4"><p class="text-sm text-slate-400 py-6 text-center">Adicione itens para começar.</p></div>
                         <div class="rounded-xl bg-slate-50 border border-slate-100 p-4 flex items-center justify-between gap-2">
                             <div><p class="text-xs text-slate-500 font-medium">Total da ordem</p><p id="summary-count" class="text-xs text-slate-400 mt-1">0 itens</p></div>
                             <strong class="text-2xl tracking-tight text-blue-700 tabular-nums" id="totalAmount">R$ 0,00</strong>
@@ -306,7 +221,7 @@
                     </div>
                 </section>
                 <section class="erp-panel">
-                    <div class="erp-panel-head"><span class="erp-step"><i class="fas fa-credit-card"></i></span><div><h3 class="erp-section-title">Pagamento</h3><p class="erp-hint">Opcional no cadastro · aceita divisão</p></div></div>
+                    <div class="erp-panel-head"><span class="erp-step"><i class="fas fa-credit-card"></i></span><div><h3 class="erp-section-title scroll-mt-28" id="title-payment">Pagamento</h3><p class="erp-hint">Opcional no cadastro · aceita divisão</p></div></div>
                     <div class="p-4 sm:p-5 space-y-3">
                         <div class="grid grid-cols-2 gap-2">
                             <button class="erp-small-button !py-3" type="button" data-add-payment="pix"><i class="fas fa-qrcode text-blue-600 mr-1"></i> Pix</button>
@@ -323,9 +238,14 @@
                     </div>
                 </section>
                 <div class="erp-panel p-4 sm:p-5 space-y-3">
-                    <p id="save-hint" class="text-xs text-slate-500"><i class="fas fa-shield-halved text-emerald-600 mr-1"></i> Valores conferidos novamente pelo servidor ao salvar.</p>
-                    <button type="submit" class="erp-save w-full" id="save-order" {{ $washes->isEmpty() ? 'disabled' : '' }}><i class="fas fa-check"></i><span>Criar ordem</span><span class="opacity-80">·</span><span id="submit-total" class="tabular-nums">R$ 0,00</span></button>
-                    <p class="text-[11px] text-center text-slate-400">Atalho: Ctrl + Enter para salvar</p>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-xs font-bold text-slate-500">Operação detectada:</span>
+                        <strong id="detected-operation" class="rounded-lg bg-emerald-50 text-emerald-700 px-2.5 py-1 text-xs">Balcão · PDV</strong>
+                    </div>
+                    <p id="save-hint" class="text-xs text-slate-500">Sem lavagem, o registro é uma venda de balcão e não entra na fila de chaves.</p>
+                    <button type="submit" name="after_save" value="new" class="erp-save w-full" id="save-order" disabled><i class="fas fa-check"></i><span id="save-label">Salvar e novo</span><span class="opacity-80">·</span><span id="submit-total" class="tabular-nums">R$ 0,00</span></button>
+                    <button type="submit" name="after_save" value="index" class="erp-small-button w-full !py-3" id="save-and-list" disabled>Salvar e consultar ordens</button>
+                    <p class="text-[11px] text-center text-slate-400">Ctrl + Enter: salvar e iniciar próximo · /: buscar produto</p>
                 </div>
             </aside>
         </div>
@@ -385,18 +305,43 @@
                 if (primaryWashId === id) primaryWashId = null;
             }
         }
+        if (!primaryWashId) {
+            for (const id of Object.keys(quantities)) if (catalog[id]?.type === 'wash') delete quantities[id];
+        }
         const availablePrimary = [...root.querySelectorAll('[data-wash]')].some(b => !b.hidden);
         document.getElementById('wash-options-empty').hidden = availablePrimary;
-        document.getElementById('save-order').disabled = !availablePrimary;
     }
     function setVehicle(type) {
         if (!['normal','suv','pickup'].includes(type)) return;
         vehicle = type;
         document.getElementById('vehicle_type').value = type;
         root.querySelectorAll('[data-vehicle]').forEach(b => { const a = b.dataset.vehicle === type; b.dataset.active = a; b.setAttribute('aria-pressed', String(a)); });
-        root.querySelectorAll('[data-price-for]').forEach(el => el.textContent = money(price(el.dataset.priceFor, vehicle)));
         refreshWashAvailability();
         render();
+        filterProducts();
+    }
+    function syncOperation() {
+        const hasWash = Boolean(findWash());
+        document.getElementById('order_type').value = hasWash ? 'service' : 'sale';
+        root.querySelectorAll('[data-requires-wash]').forEach(el => el.hidden = !hasWash);
+        const plate = document.getElementById('license_plate');
+        plate.required = hasWash;
+        document.getElementById('detected-operation').textContent = hasWash ? 'Lavagem + adicionais' : 'Balcão · PDV';
+        document.getElementById('detected-operation').className = hasWash
+            ? 'rounded-lg bg-blue-50 text-blue-700 px-2.5 py-1 text-xs'
+            : 'rounded-lg bg-emerald-50 text-emerald-700 px-2.5 py-1 text-xs';
+        document.getElementById('client-hint').textContent = hasWash
+            ? 'Placa obrigatória para a lavagem · cliente opcional'
+            : 'Identificação opcional no balcão; placa apenas para lavagens';
+        document.getElementById('save-hint').textContent = hasWash
+            ? 'Lavagem, bebidas e adicionais ficam juntos na mesma ordem e no mesmo pagamento.'
+            : 'Venda balcão concluída sem veículo e sem entrar na fila de chaves.';
+        root.querySelectorAll('[data-price-for]').forEach(el => {
+            const item = catalog[el.dataset.priceFor];
+            const type = item?.type === 'wash' || hasWash ? vehicle : 'normal';
+            el.textContent = money(price(el.dataset.priceFor, type));
+        });
+        filterProducts();
     }
     function setCustomer(type) {
         document.getElementById('customer_type').value = type;
@@ -406,20 +351,26 @@
     }
     function setWash(id) {
         if (!id || catalog[id]?.type !== 'wash' || price(id, vehicle) <= 0) return;
-        if (primaryWashId && primaryWashId !== id) delete quantities[primaryWashId];
-        primaryWashId = String(id);
-        quantities[id] = 1;
+        if (primaryWashId === String(id)) {
+            // Remove a lavagem e seus adicionais; mantém bebidas/produtos no carrinho.
+            for (const key of Object.keys(quantities)) if (catalog[key]?.type === 'wash') delete quantities[key];
+            primaryWashId = null;
+        } else {
+            if (primaryWashId) delete quantities[primaryWashId];
+            primaryWashId = String(id);
+            quantities[id] = 1;
+        }
         hideError();
         render();
     }
     function toggleExtraWash(id) {
-        if (!id || catalog[id]?.type !== 'wash' || id === primaryWashId || price(id, vehicle) <= 0) return;
+        if (!findWash() || !id || catalog[id]?.type !== 'wash' || id === primaryWashId || price(id, vehicle) <= 0) return;
         if (quantities[id]) delete quantities[id]; else quantities[id] = 1;
         hideError();
         render();
     }
     function changeQty(id, change) {
-        if (!catalog[id] || catalog[id].type === 'wash') return;
+        if (!catalog[id] || catalog[id].type === 'wash' || price(id, findWash() ? vehicle : 'normal') <= 0) return;
         const next = Math.max(0, Math.min(100, (quantities[id] || 0) + change));
         if (next === 0) delete quantities[id]; else quantities[id] = next;
         hideError();
@@ -427,6 +378,9 @@
     }
     function render() {
         const ids = selected();
+        syncOperation();
+        const hasWash = Boolean(findWash());
+        const effectiveVehicle = hasWash ? vehicle : 'normal';
         const inputs = document.getElementById('order-items-inputs');
         inputs.replaceChildren();
         for (const id of ids) {
@@ -438,7 +392,7 @@
         root.querySelectorAll('[data-wash]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.wash === wash)));
         root.querySelectorAll('[data-extra-wash]').forEach(b => {
             const isPrimary = b.dataset.extraWash === primaryWashId;
-            b.disabled = isPrimary || price(b.dataset.extraWash, vehicle) <= 0;
+            b.disabled = !hasWash || isPrimary || price(b.dataset.extraWash, vehicle) <= 0;
             b.setAttribute('aria-pressed', String(!isPrimary && Boolean(quantities[b.dataset.extraWash])));
             b.querySelector('i')?.classList.toggle('fa-check', !isPrimary && Boolean(quantities[b.dataset.extraWash]));
             b.querySelector('i')?.classList.toggle('fa-plus', isPrimary || !quantities[b.dataset.extraWash]);
@@ -455,9 +409,9 @@
         summary.replaceChildren();
         totalCents = 0;
         let units = 0;
-        if (!ids.length) summary.innerHTML = '<p class="text-sm text-slate-400 py-6 text-center">Escolha uma lavagem para começar.</p>';
+        if (!ids.length) summary.innerHTML = '<p class="text-sm text-slate-400 py-6 text-center">Toque em + ou escolha uma lavagem para começar.</p>';
         for (const id of ids) {
-            const count = quantities[id], amount = price(id,vehicle)*count;
+            const count = quantities[id], amount = price(id,effectiveVehicle)*count;
             units += count; totalCents += amount;
             const el = document.createElement('div'); el.className = 'erp-summary-line';
             const prefix = catalog[id].type === 'wash' ? (id === primaryWashId ? 'Principal · ' : 'Adicional · ') : '';
@@ -467,6 +421,10 @@
         document.getElementById('totalAmount').textContent = money(totalCents);
         document.getElementById('summary-count').textContent = `${units} ${units === 1 ? 'unidade' : 'unidades'}`;
         document.getElementById('submit-total').textContent = money(totalCents);
+        const availableWash = root.querySelector('[data-wash]:not([hidden])');
+        const disabled = totalCents <= 0 || (hasWash && !availableWash);
+        document.getElementById('save-order').disabled = disabled;
+        document.getElementById('save-and-list').disabled = disabled;
         renderPayments();
     }
     function paidCents() { return payments.reduce((sum, p) => sum+p.cents, 0); }
@@ -497,7 +455,7 @@
         const term = document.getElementById('product-search').value.trim().toLocaleLowerCase('pt-BR');
         let count = 0;
         root.querySelectorAll('[data-product]').forEach(el => {
-            const visible = (filter === 'all' || el.dataset.category === filter) && (!term || el.dataset.name.includes(term));
+            const visible = price(el.dataset.product, findWash() ? vehicle : 'normal') > 0 && (filter === 'all' || el.dataset.category === filter) && (!term || el.dataset.name.includes(term));
             el.hidden = !visible;
             if (visible) count++;
         });
@@ -519,7 +477,7 @@
         }
         else if (b.dataset.addPayment) {
             const remaining = totalCents-paidCents();
-            if (remaining <= 0) { showError('Selecione uma lavagem ou ajuste os pagamentos para adicionar outra forma de recebimento.'); return; }
+            if (remaining <= 0) { showError('Adicione produtos ou ajuste os pagamentos para registrar recebimentos.'); return; }
             payments.push({method:b.dataset.addPayment,cents:remaining});
             hideError(); renderPayments();
             const input = document.getElementById(`payment-${payments.length-1}`);
@@ -535,99 +493,31 @@
         payments[i].cents = cents;
         hideError(); renderPayments();
     });
-    // Painel diário se atualiza sem recarregar o formulário e perder a ordem em edição.
-    async function refreshTodaySummary() {
-        if (document.hidden) return;
-        const panel = document.getElementById('today-summary');
-        const status = document.getElementById('today-summary-updated');
-        try {
-            const response = await fetch(panel.dataset.summaryUrl, {
-                credentials: 'same-origin', headers: { 'Accept':'application/json' }, cache: 'no-store'
-            });
-            if (!response.ok) throw new Error('HTTP ' + response.status);
-            const summary = await response.json();
-            const values = {
-                'orders': summary.orders,
-                'received': money(Math.round(summary.received * 100)),
-                'drinks.quantity': summary.drinks.quantity,
-                'drinks.amount': money(Math.round(summary.drinks.amount * 100)),
-                'wash_addons.quantity': summary.wash_addons.quantity,
-                'wash_addons.amount': money(Math.round(summary.wash_addons.amount * 100)),
-                'drinks.amount.detail': `${summary.drinks.quantity} un. · ${money(Math.round(summary.drinks.amount * 100))}`,
-                'wash_addons.amount.detail': `${summary.wash_addons.quantity} un. · ${money(Math.round(summary.wash_addons.amount * 100))}`
-            };
-            values['wash_types.total'] = `${summary.wash_types.quantity} lavagens · ${money(Math.round(summary.wash_types.amount * 100))}`;
-            for (const type of ['normal','suv','pickup']) values[`vehicles.${type}`] = summary.vehicles[type] || 0;
-            for (const method of ['pix','cash','credit','debit']) values[`payments.${method}.amount`] = money(Math.round((summary.payments[method]?.amount || 0) * 100));
-            for (const [key,value] of Object.entries(values)) {
-                const el = panel.querySelector(`[data-today="${key}"]`);
-                if (el) el.textContent = value;
-            }
-            // Renderizar apenas texto vindo da API (nunca HTML) para evitar XSS.
-            const washBody = document.getElementById('today-wash-type-rows');
-            washBody.replaceChildren();
-            const washTypes = summary.wash_types.items || [];
-            if (!washTypes.length) {
-                const tr = document.createElement('tr');
-                const td = document.createElement('td');
-                td.colSpan = 6; td.className = 'py-4 px-4 text-center text-slate-400';
-                td.textContent = 'Nenhuma lavagem principal registrada hoje.';
-                tr.appendChild(td); washBody.appendChild(tr);
-            }
-            for (const wash of washTypes) {
-                const tr = document.createElement('tr');
-                const cells = [wash.name, wash.vehicles.normal || 0, wash.vehicles.suv || 0,
-                    wash.vehicles.pickup || 0, wash.quantity, money(Math.round(wash.amount * 100))];
-                cells.forEach((value, index) => {
-                    const td = document.createElement('td');
-                    td.className = index === 0 ? 'py-2 px-4 font-semibold' : index === 5
-                        ? 'text-right py-2 px-4 tabular-nums' : 'text-center py-2 px-2 tabular-nums';
-                    td.textContent = value;
-                    tr.appendChild(td);
-                });
-                washBody.appendChild(tr);
-            }
-            for (const [key,rows] of [['today-drink-details',summary.drinks.items],['today-wash-details',summary.wash_addons.items]]) {
-                const holder = document.getElementById(key);
-                holder.replaceChildren();
-                if (!rows?.length) {
-                    const empty = document.createElement('p'); empty.className = 'text-[11px] text-slate-400'; empty.textContent = 'Nenhuma hoje'; holder.appendChild(empty);
-                } else {
-                    rows.forEach(item => {
-                        const line = document.createElement('p'); line.className = 'text-[11px] text-slate-600';
-                        line.textContent = `${item.quantity}× ${item.name}`; holder.appendChild(line);
-                    });
-                }
-            }
-            status.textContent = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
-        } catch (_) {
-            status.textContent = 'Sem conexão · exibindo último resumo disponível';
-        }
-    }
-    setInterval(refreshTodaySummary, 60000);
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshTodaySummary(); });
-
     document.getElementById('product-search').addEventListener('input', filterProducts);
     document.getElementById('license_plate').addEventListener('input', e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g,''); });
     form.addEventListener('submit', e => {
         if (saving) { e.preventDefault(); return; }
         const invalidPayment = [...root.querySelectorAll('[data-payment-index]')].find(input => parseMoney(input.value) === null);
         if (invalidPayment) { e.preventDefault(); invalidPayment.classList.add('erp-invalid'); showError('Corrija o valor do pagamento destacado antes de continuar.'); invalidPayment.focus(); return; }
-        if (!document.getElementById('license_plate').value.trim()) { e.preventDefault(); showError('Informe a placa do veículo.'); document.getElementById('license_plate').focus(); return; }
-        if (!findWash()) { e.preventDefault(); showError('Escolha uma lavagem para continuar.'); return; }
+        if (findWash() && !document.getElementById('license_plate').value.trim()) { e.preventDefault(); showError('Informe a placa do veículo.'); document.getElementById('license_plate').focus(); return; }
+        if (!findWash() && Object.keys(quantities).some(id => catalog[id]?.type === 'wash')) { e.preventDefault(); showError('Selecione uma lavagem principal para os serviços de lavagem.'); return; }
         root.querySelectorAll('[data-payment-index]').forEach(input => { payments[Number(input.dataset.paymentIndex)].cents = parseMoney(input.value); });
         renderPayments();
         if (paidCents() > totalCents) { e.preventDefault(); showError('O valor recebido excede o total. Ajuste os pagamentos antes de salvar.'); return; }
         if (totalCents <= 0) { e.preventDefault(); showError('Não é possível registrar uma ordem com total zero. Confira os preços dos produtos.'); return; }
         saving = true;
-        const save = document.getElementById('save-order'); save.disabled = true;
-        save.querySelector('span').textContent = 'Registrando...';
+        // Não desabilitar o botão submetido antes do navegador construir o POST:
+        // isso apagaria seu name/value e impediria o redirecionamento "Salvar e novo".
+        for (const save of [document.getElementById('save-order'), document.getElementById('save-and-list')]) {
+            if (save !== e.submitter) save.disabled = true;
+        }
+        document.getElementById('save-label').textContent = 'Registrando...';
     });
     document.addEventListener('keydown', e => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); form.requestSubmit(); }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); form.requestSubmit(document.getElementById('save-order')); }
         if (e.key === '/' && !e.ctrlKey && !e.metaKey && !['INPUT','TEXTAREA'].includes(document.activeElement?.tagName)) { e.preventDefault(); document.getElementById('product-search').focus(); }
     });
-    window.addEventListener('pageshow', () => { if (saving) { saving=false; document.getElementById('save-order').disabled=false; document.getElementById('save-order').querySelector('span').textContent='Criar ordem'; } });
+    window.addEventListener('pageshow', () => { if (saving) { saving=false; document.getElementById('save-label').textContent = 'Salvar e novo'; render(); } });
     setCustomer(document.getElementById('customer_type').value);
     setVehicle(vehicle);
     filterProducts();

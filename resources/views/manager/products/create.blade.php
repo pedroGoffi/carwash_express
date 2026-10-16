@@ -20,14 +20,15 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Tipo *</label>
-                    <select name="type" required class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                    <select name="type" id="product-type" required class="w-full border border-gray-300 rounded-lg px-3 py-2">
                         <option value="wash">Lavagem</option>
                         <option value="drink">Bebida</option>
                         <option value="snack">Comida</option>
+                        <option value="other" {{ old('type', isset($product) ? $product->type->value : '') === 'other' ? 'selected' : '' }}>Outros produtos</option>
                     </select>
                 </div>
 
-                {{-- Tabela de Preços por Tipo de Veículo --}}
+                {{-- Preços de venda por Tipo de Veículo --}}
                 <div class="bg-gray-50 rounded-lg p-4">
                     <label class="block text-sm font-medium text-gray-700 mb-3">
                         <i class="fas fa-table mr-1"></i> Tabela de Preços
@@ -37,7 +38,7 @@
                         <table class="w-full">
                             <thead>
                                 <tr class="border-b">
-                                    <th class="text-left py-2 px-3 text-sm font-medium">Tipo do Veículo</th>
+                                    <th class="text-left py-2 px-3 text-sm font-medium">Categoria</th>
                                     <th class="text-left py-2 px-3 text-sm font-medium">Preço (R$)</th>
                                 </tr>
                             </thead>
@@ -46,7 +47,7 @@
                                     <td class="py-2 px-3">
                                         <div class="flex items-center gap-2">
                                             <i class="fas fa-car-side text-blue-500"></i>
-                                            <span class="text-sm">Carro Pequeno</span>
+                                            <span class="text-sm">Preço base / PDV</span>
                                         </div>
                                     </td>
                                     <td class="py-2 px-3">
@@ -54,7 +55,7 @@
                                             class="w-32 border rounded-lg px-2 py-1 text-sm">
                                     </td>
                                 </tr>
-                                <tr class="border-b">
+                                <tr class="border-b" data-vehicle-price>
                                     <td class="py-2 px-3">
                                         <div class="flex items-center gap-2">
                                             <i class="fas fa-caravan text-green-500"></i>
@@ -66,7 +67,7 @@
                                             class="w-32 border rounded-lg px-2 py-1 text-sm">
                                     </td>
                                 </tr>
-                                <tr>
+                                <tr data-vehicle-price>
                                     <td class="py-2 px-3">
                                         <div class="flex items-center gap-2">
                                             <i class="fas fa-truck-pickup text-orange-500"></i>
@@ -91,4 +92,13 @@
         </form>
     </div>
 </div>
+<script>
+(() => {
+    const type = document.getElementById('product-type');
+    if (!type) return;
+    const refresh = () => document.querySelectorAll('[data-vehicle-price]').forEach(row => row.hidden = type.value !== 'wash');
+    type.addEventListener('change', refresh);
+    refresh();
+})();
+</script>
 @endsection
